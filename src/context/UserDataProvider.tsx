@@ -109,37 +109,43 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const mission = missions.find((m) => m.id === missionId);
     if (!mission) return;
 
-    setUser((prevUser) => {
-      const totalXpGained = mission.xp + bonusXp;
-      let newXp = prevUser.xp + totalXpGained;
-      let newLevel = prevUser.level;
-      let newXpToNextLevel = prevUser.xpToNextLevel;
-      let newTitle = prevUser.title;
+    // Calculate new state based on current user state
+    const totalXpGained = mission.xp + bonusXp;
+    let currentXp = user.xp + totalXpGained;
+    let currentLevel = user.level;
+    let currentXpToNextLevel = user.xpToNextLevel;
+    let currentTitle = user.title;
+    let leveledUp = false;
 
-      while (newXp >= newXpToNextLevel) {
-        newLevel += 1;
-        newXp -= newXpToNextLevel;
-        newXpToNextLevel = newLevel * 150;
-        newTitle = getTitleForLevel(newLevel);
-        toast({
-          title: 'Naik Level!',
-          description: `Selamat! Anda telah mencapai Level ${newLevel} dan meraih gelar ${newTitle}.`,
-          variant: 'success',
-        });
-      }
+    while (currentXp >= currentXpToNextLevel) {
+      leveledUp = true;
+      currentXp -= currentXpToNextLevel;
+      currentLevel += 1;
+      currentXpToNextLevel = currentLevel * 150;
+      currentTitle = getTitleForLevel(currentLevel);
+    }
 
-      const updatedUser = {
-        ...prevUser,
-        xp: newXp,
-        level: newLevel,
-        xpToNextLevel: newXpToNextLevel,
-        title: newTitle,
-        completedMissions: [...prevUser.completedMissions, missionId],
-      };
-      
-      localStorage.setItem('deen-daily-user', JSON.stringify(updatedUser));
-      return updatedUser;
-    });
+    // Create the final updated user object
+    const updatedUser: User = {
+      ...user,
+      xp: currentXp,
+      level: currentLevel,
+      xpToNextLevel: currentXpToNextLevel,
+      title: currentTitle,
+      completedMissions: [...user.completedMissions, missionId],
+    };
+    
+    // Set state and perform side-effects
+    setUser(updatedUser);
+    localStorage.setItem('deen-daily-user', JSON.stringify(updatedUser));
+    
+    if (leveledUp) {
+      toast({
+        title: 'Naik Level!',
+        description: `Selamat! Anda telah mencapai Level ${currentLevel} dan meraih gelar "${currentTitle}".`,
+        variant: 'success',
+      });
+    }
   };
 
   const value = { user, missions, isAuthenticated, completeMission, login, logout, register, isLoading };
