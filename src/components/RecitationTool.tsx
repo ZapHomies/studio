@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useEffect, useContext } from 'react';
@@ -77,13 +78,15 @@ export default function RecitationTool() {
         const result = await provideRecitationFeedback({ audioDataUri });
         setFeedback(result.feedback);
         
-        // Auto-complete Quran mission ('mission-3')
-        const quranMission = missions.find(m => m.id === 'mission-3');
+        // Auto-complete Quran mission ('monthly-quran-recite')
+        const quranMission = missions.find(m => m.id === 'monthly-quran-recite');
         if (quranMission && !user.completedMissions.includes(quranMission.id)) {
-            completeMission(quranMission.id);
+            // Dynamic XP based on recording time. 10 base + 2 XP per second, max 200.
+            const xpGained = Math.min(200, 10 + (timer * 2));
+            completeMission(quranMission.id, 0, xpGained);
             toast({
                 title: "Misi Otomatis Selesai!",
-                description: `Anda menyelesaikan "${quranMission.title}" dan mendapatkan ${quranMission.xp} XP.`,
+                description: `Anda menyelesaikan "${quranMission.title}" dan mendapatkan ${xpGained} XP.`,
                 variant: 'success'
             });
         }

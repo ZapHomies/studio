@@ -1,25 +1,31 @@
+
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { type User, type Mission } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { initialMissions, initialUser } from '@/lib/data';
+import { initialUser, dailyMissionPool, weeklyMissionPool, monthlyMissionPool } from '@/lib/data';
 import { useRouter, usePathname } from 'next/navigation';
+import { isToday, isThisWeek, isThisMonth } from 'date-fns';
 
 interface UserDataContextType {
   user: User;
   missions: Mission[];
   isAuthenticated: boolean;
-  completeMission: (missionId: string, bonusXp?: number) => void;
+  completeMission: (missionId: string, bonusXp?: number, overrideXp?: number) => void;
   login: (name: string) => void;
   logout: () => void;
   register: (name: string) => void;
   isLoading: boolean;
 }
 
+const NUM_DAILY = 4;
+const NUM_WEEKLY = 2;
+const NUM_MONTHLY = 2;
+
 export const UserDataContext = createContext<UserDataContextType>({
   user: initialUser,
-  missions: initialMissions,
+  missions: [],
   isAuthenticated: false,
   isLoading: true,
   completeMission: () => {},
@@ -36,10 +42,16 @@ const getTitleForLevel = (level: number): string => {
   return 'Muslim Baru';
 };
 
+// Helper to get N random items from a pool
+const getRandomMissions = (pool: Mission[], count: number, excludeIds: string[] = []): Mission[] => {
+  const available = pool.filter(m => !excludeIds.includes(m.id));
+  return available.sort(() => 0.5 - Math.random()).slice(0, count);
+};
+
 
 export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User>(initialUser);
-  const [missions] = useState<Mission[]>(initialMissions);
+  const [missions, setMissions] = useState<Mission[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -47,13 +59,65 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Simulate checking auth status from storage
-    const loggedInUser = localStorage.getItem('deen-daily-user');
-    if (loggedInUser) {
-      const parsedUser = JSON.parse(loggedInUser);
-      setUser(parsedUser);
+    const storedDataRaw = localStorage.getItem('deen-daily-data');
+    let loadedUser = null;
+    let loadedMissions = [];
+
+    if (storedDataRaw) {
+      const storedData = JSON.parse(storedDataRaw);
+      loadedUser = storedData.user;
+      loadedMissions = storedData.missions;
       setIsAuthenticated(true);
     }
+    
+    if (loadedUser) {
+        // --- Mission Reset Logic ---
+        const now = new Date();
+        let userToUpdate = { ...loadedUser };
+        let missionsToUpdate = [...loadedMissions];
+        let didUpdate = false;
+
+        // Daily Reset
+        if (!isToday(new Date(userToUpdate.lastDailyReset))) {
+            const oldDailyIds = missionsToUpdate.filter(m => m.category === 'Harian').map(m => m.id);
+            userToUpdate.completedMissions = userToUpdate.completedMissions.filter(id => !oldDailyIds.includes(id));
+            missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Harian');
+            const newDailyMissions = getRandomMissions(dailyMissionPool, NUM_DAILY);
+            missionsToUpdate.push(...newDailyMissions);
+            userToUpdate.lastDailyReset = now.toISOString();
+            didUpdate = true;
+        }
+
+        // Weekly Reset
+        if (!isThisWeek(new Date(userToUpdate.lastWeeklyReset), { weekStartsOn: 1 })) {
+            const oldWeeklyIds = missionsToUpdate.filter(m => m.category === 'Mingguan').map(m => m.id);
+            userToUpdate.completedMissions = userToUpdate.completedMissions.filter(id => !oldWeeklyIds.includes(id));
+            missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Mingguan');
+            const newWeeklyMissions = getRandomMissions(weeklyMissionPool, NUM_WEEKLY);
+            missionsToUpdate.push(...newWeeklyMissions);
+            userToUpdate.lastWeeklyReset = now.toISOString();
+            didUpdate = true;
+        }
+
+        // Monthly Reset
+        if (!isThisMonth(new Date(userToUpdate.lastMonthlyReset))) {
+            const oldMonthlyIds = missionsToUpdate.filter(m => m.category === 'Bulanan').map(m => m.id);
+            userToUpdate.completedMissions = userToUpdate.completedMissions.filter(id => !oldMonthlyIds.includes(id));
+            missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Bulanan');
+            const newMonthlyMissions = getRandomMissions(monthlyMissionPool, NUM_MONTHLY);
+            missionsToUpdate.push(...newMonthlyMissions);
+            userToUpdate.lastMonthlyReset = now.toISOString();
+            didUpdate = true;
+        }
+        
+        setUser(userToUpdate);
+        setMissions(missionsToUpdate);
+        if(didUpdate) {
+            localStorage.setItem('deen-daily-data', JSON.stringify({ user: userToUpdate, missions: missionsToUpdate }));
+        }
+
+    }
+
     setIsLoading(false);
   }, []);
 
@@ -66,14 +130,26 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isAuthenticated, isLoading, pathname, router]);
 
+  const saveData = (userToSave: User, missionsToSave: Mission[]) => {
+      setUser(userToSave);
+      setMissions(missionsToSave);
+      localStorage.setItem('deen-daily-data', JSON.stringify({ user: userToSave, missions: missionsToSave }));
+  }
+
+  const generateNewUserMissions = (): Mission[] => {
+      const daily = getRandomMissions(dailyMissionPool, NUM_DAILY);
+      const weekly = getRandomMissions(weeklyMissionPool, NUM_WEEKLY);
+      const monthly = getRandomMissions(monthlyMissionPool, NUM_MONTHLY);
+      return [...daily, ...weekly, ...monthly];
+  }
 
   const login = (name: string) => {
-    // In a real app, you'd verify credentials
-    const existingUserRaw = localStorage.getItem('deen-daily-user');
-    if (existingUserRaw) {
-        const existingUser = JSON.parse(existingUserRaw);
-        if (existingUser.name.toLowerCase() === name.toLowerCase()) {
-            setUser(existingUser);
+    const storedDataRaw = localStorage.getItem('deen-daily-data');
+    if (storedDataRaw) {
+        const storedData = JSON.parse(storedDataRaw);
+        if (storedData.user.name.toLowerCase() === name.toLowerCase()) {
+            setUser(storedData.user);
+            setMissions(storedData.missions);
             setIsAuthenticated(true);
             router.push('/missions');
             return;
@@ -87,21 +163,30 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const register = (name: string) => {
-    const newUser = { ...initialUser, name: name, title: getTitleForLevel(1) };
-    localStorage.setItem('deen-daily-user', JSON.stringify(newUser));
-    setUser(newUser);
+    const now = new Date();
+    const newUser: User = { 
+        ...initialUser, 
+        name: name, 
+        title: getTitleForLevel(1),
+        lastDailyReset: now.toISOString(),
+        lastWeeklyReset: now.toISOString(),
+        lastMonthlyReset: now.toISOString(),
+    };
+    const newMissions = generateNewUserMissions();
+    saveData(newUser, newMissions);
     setIsAuthenticated(true);
     router.push('/missions');
   };
   
   const logout = () => {
-    localStorage.removeItem('deen-daily-user');
+    localStorage.removeItem('deen-daily-data');
     setUser(initialUser);
+    setMissions([]);
     setIsAuthenticated(false);
     router.push('/');
   };
 
-  const completeMission = (missionId: string, bonusXp: number = 0) => {
+  const completeMission = (missionId: string, bonusXp: number = 0, overrideXp?: number) => {
     if (user.completedMissions.includes(missionId)) {
       return;
     }
@@ -109,40 +194,45 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const mission = missions.find((m) => m.id === missionId);
     if (!mission) return;
 
-    // Calculate new state based on current user state
-    const totalXpGained = mission.xp + bonusXp;
-    let currentXp = user.xp + totalXpGained;
-    let currentLevel = user.level;
-    let currentXpToNextLevel = user.xpToNextLevel;
-    let currentTitle = user.title;
     let leveledUp = false;
+    let newTitle = user.title;
 
-    while (currentXp >= currentXpToNextLevel) {
+    const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
+    const totalXpGained = xpFromMission + bonusXp;
+    
+    const updatedUser = { ...user };
+    let finalMissions = [...missions];
+
+    updatedUser.xp += totalXpGained;
+    
+    while (updatedUser.xp >= updatedUser.xpToNextLevel) {
       leveledUp = true;
-      currentXp -= currentXpToNextLevel;
-      currentLevel += 1;
-      currentXpToNextLevel = currentLevel * 150;
-      currentTitle = getTitleForLevel(currentLevel);
+      updatedUser.xp -= updatedUser.xpToNextLevel;
+      updatedUser.level += 1;
+      updatedUser.xpToNextLevel = updatedUser.level * 150;
+      newTitle = getTitleForLevel(updatedUser.level);
+    }
+    updatedUser.title = newTitle;
+    updatedUser.completedMissions = [...user.completedMissions, missionId];
+    
+    // Replace daily mission if completed
+    if (mission.category === 'Harian') {
+        const currentMissionIds = finalMissions.map(m => m.id);
+        const newMission = getRandomMissions(dailyMissionPool, 1, currentMissionIds)[0];
+        if (newMission) {
+            const missionIndex = finalMissions.findIndex(m => m.id === missionId);
+            if(missionIndex !== -1) {
+                finalMissions[missionIndex] = newMission;
+            }
+        }
     }
 
-    // Create the final updated user object
-    const updatedUser: User = {
-      ...user,
-      xp: currentXp,
-      level: currentLevel,
-      xpToNextLevel: currentXpToNextLevel,
-      title: currentTitle,
-      completedMissions: [...user.completedMissions, missionId],
-    };
-    
-    // Set state and perform side-effects
-    setUser(updatedUser);
-    localStorage.setItem('deen-daily-user', JSON.stringify(updatedUser));
+    saveData(updatedUser, finalMissions);
     
     if (leveledUp) {
       toast({
         title: 'Naik Level!',
-        description: `Selamat! Anda telah mencapai Level ${currentLevel} dan meraih gelar "${currentTitle}".`,
+        description: `Selamat! Anda telah mencapai Level ${updatedUser.level} dan meraih gelar "${updatedUser.title}".`,
         variant: 'success',
       });
     }
@@ -153,8 +243,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   if (isLoading) {
     return (
         <div className="flex min-h-screen w-full items-center justify-center">
-            {/* You can replace this with a beautiful spinner */}
-            <p>Loading...</p> 
+            <p>Memuat...</p> 
         </div>
     );
   }

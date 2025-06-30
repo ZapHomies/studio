@@ -5,6 +5,10 @@ export interface User {
   xpToNextLevel: number;
   completedMissions: string[];
   title: string;
+  // Timestamps for mission resets
+  lastDailyReset: string;
+  lastWeeklyReset: string;
+  lastMonthlyReset: string;
 }
 
 export interface Mission {
@@ -14,4 +18,5 @@ export interface Mission {
   xp: number;
   type: 'photo' | 'action' | 'auto';
   bonusXp?: number;
+  category: 'Harian' | 'Mingguan' | 'Bulanan';
 }

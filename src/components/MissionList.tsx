@@ -1,20 +1,88 @@
+
 'use client';
 
-import { useContext, useState } from 'react';
+import { useContext, useState, useMemo } from 'react';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { type Mission } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import MissionCompletionDialog from './MissionCompletionDialog';
 import { Badge } from './ui/badge';
-import { CheckCircle, Zap, ChevronsRight } from 'lucide-react';
+import { CheckCircle, Zap, ChevronsRight, Calendar, Star, Moon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const MissionCard = ({ mission, onAction, onOpenDialog }: { mission: Mission, onAction: (mission: Mission) => void, onOpenDialog: (mission: Mission) => void}) => {
+    const { user } = useContext(UserDataContext);
+    const isCompleted = user.completedMissions.includes(mission.id);
+
+    const renderMissionButton = () => {
+        if (isCompleted) {
+            return (
+                <Button disabled className="w-full bg-success/80 hover:bg-success/80">
+                <CheckCircle />
+                Selesai
+                </Button>
+            );
+        }
+
+        switch (mission.type) {
+            case 'photo':
+                return (
+                <Button onClick={() => onOpenDialog(mission)} className="w-full">
+                    <ChevronsRight />
+                    Selesaikan Misi
+                </Button>
+                );
+            case 'action':
+                return (
+                <Button onClick={() => onAction(mission)} className="w-full">
+                    <CheckCircle />
+                    Tandai Selesai
+                </Button>
+                );
+            case 'auto':
+                return (
+                <Button disabled className="w-full" variant="outline">
+                    Selesai Otomatis
+                </Button>
+                );
+            default:
+                return null;
+        }
+    };
+    
+    return (
+        <Card className="flex flex-col overflow-hidden shadow-md transition-shadow hover:shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-xl text-primary">{mission.title}</CardTitle>
+                <CardDescription className="text-base">{mission.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="border-accent text-accent">
+                    {mission.xp} XP
+                    </Badge>
+                    {mission.bonusXp && (
+                    <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white">
+                        <Zap className="mr-1 h-3 w-3" /> +{mission.bonusXp} XP Bonus
+                    </Badge>
+                    )}
+                </div>
+            </CardContent>
+            <CardFooter>
+                {renderMissionButton()}
+            </CardFooter>
+        </Card>
+    );
+}
+
+
 export default function MissionList() {
-  const { user, missions, completeMission } = useContext(UserDataContext);
+  const { missions } = useContext(UserDataContext);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { completeMission } = useContext(UserDataContext);
 
   const handleOpenDialog = (mission: Mission) => {
     setSelectedMission(mission);
@@ -35,71 +103,42 @@ export default function MissionList() {
     });
   }
 
-  const renderMissionButton = (mission: Mission) => {
-    const isCompleted = user.completedMissions.includes(mission.id);
-
-    if (isCompleted) {
-      return (
-        <Button disabled className="w-full bg-success/80 hover:bg-success/80">
-          <CheckCircle />
-          Selesai
-        </Button>
-      );
+  const { dailyMissions, weeklyMissions, monthlyMissions } = useMemo(() => {
+    return {
+      dailyMissions: missions.filter(m => m.category === 'Harian'),
+      weeklyMissions: missions.filter(m => m.category === 'Mingguan'),
+      monthlyMissions: missions.filter(m => m.category === 'Bulanan'),
     }
+  }, [missions]);
 
-    switch (mission.type) {
-      case 'photo':
-        return (
-          <Button onClick={() => handleOpenDialog(mission)} className="w-full">
-            <ChevronsRight />
-            Selesaikan Misi
-          </Button>
-        );
-      case 'action':
-        return (
-          <Button onClick={() => handleActionMission(mission)} className="w-full">
-            <CheckCircle />
-            Tandai Selesai
-          </Button>
-        );
-      case 'auto':
-        return (
-          <Button disabled className="w-full" variant="outline">
-            Selesai Otomatis
-          </Button>
-        );
-      default:
-        return null;
-    }
+  const renderMissionSection = (title: string, icon: React.ReactNode, missionList: Mission[]) => {
+    if (missionList.length === 0) return null;
+    return (
+      <div className="mb-12">
+        <h2 className="mb-4 flex items-center gap-3 font-headline text-3xl font-bold text-primary">
+          {icon}
+          {title}
+        </h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          {missionList.map((mission) => (
+            <MissionCard 
+                key={mission.id} 
+                mission={mission}
+                onAction={handleActionMission}
+                onOpenDialog={handleOpenDialog}
+            />
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
     <div>
-      <div className="grid gap-6">
-        {missions.map((mission) => (
-          <Card key={mission.id} className="flex flex-col overflow-hidden shadow-md transition-shadow hover:shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl text-primary">{mission.title}</CardTitle>
-              <CardDescription className="text-base">{mission.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow">
-               <div className="flex items-center gap-2 flex-wrap">
-                 <Badge variant="outline" className="border-accent text-accent">
-                   {mission.xp} XP
-                 </Badge>
-                 {mission.bonusXp && (
-                   <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white">
-                     <Zap className="mr-1 h-3 w-3" /> +{mission.bonusXp} XP Bonus
-                   </Badge>
-                 )}
-               </div>
-            </CardContent>
-            <CardFooter>
-              {renderMissionButton(mission)}
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+        {renderMissionSection("Misi Harian", <Star className="h-8 w-8"/>, dailyMissions)}
+        {renderMissionSection("Misi Mingguan", <Calendar className="h-8 w-8"/>, weeklyMissions)}
+        {renderMissionSection("Misi Bulanan", <Moon className="h-8 w-8"/>, monthlyMissions)}
+      
       <MissionCompletionDialog
         mission={selectedMission}
         isOpen={isDialogOpen}
