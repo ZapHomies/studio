@@ -4,7 +4,7 @@
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import { type User, type Mission } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { initialUser, dailyMissionPool, weeklyMissionPool, monthlyMissionPool } from '@/lib/data';
+import { initialUser, dailyMissionPool, weeklyMissionPool, monthlyMissionPool, avatarPool } from '@/lib/data';
 import { useRouter, usePathname } from 'next/navigation';
 import { isToday, isThisWeek, isThisMonth } from 'date-fns';
 
@@ -12,11 +12,12 @@ interface UserDataContextType {
   user: User;
   missions: Mission[];
   isAuthenticated: boolean;
+  isLoading: boolean;
   completeMission: (missionId: string, bonusXp?: number, overrideXp?: number) => void;
   login: (name: string) => void;
   logout: () => void;
   register: (name: string) => void;
-  isLoading: boolean;
+  updateUser: (updatedData: Partial<User>) => void;
 }
 
 const NUM_DAILY = 4;
@@ -32,6 +33,7 @@ export const UserDataContext = createContext<UserDataContextType>({
   login: () => {},
   logout: () => {},
   register: () => {},
+  updateUser: () => {},
 });
 
 const getTitleForLevel = (level: number): string => {
@@ -59,15 +61,23 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
+    setIsLoading(true);
     const storedDataRaw = localStorage.getItem('deen-daily-data');
     let loadedUser = null;
     let loadedMissions = [];
 
     if (storedDataRaw) {
-      const storedData = JSON.parse(storedDataRaw);
-      loadedUser = storedData.user;
-      loadedMissions = storedData.missions;
-      setIsAuthenticated(true);
+      try {
+        const storedData = JSON.parse(storedDataRaw);
+        if (storedData.user && storedData.missions) {
+            loadedUser = storedData.user;
+            loadedMissions = storedData.missions;
+            setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error("Failed to parse user data from localStorage", error);
+        localStorage.removeItem('deen-daily-data'); // Clear corrupted data
+      }
     }
     
     if (loadedUser) {
@@ -122,7 +132,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && pathname !== '/register') {
+    if (!isLoading && !isAuthenticated && pathname !== '/register' && pathname !== '/') {
       router.push('/');
     }
     if (!isLoading && isAuthenticated && (pathname === '/' || pathname === '/register')) {
@@ -148,10 +158,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (storedDataRaw) {
         const storedData = JSON.parse(storedDataRaw);
         if (storedData.user.name.toLowerCase() === name.toLowerCase()) {
-            setUser(storedData.user);
-            setMissions(storedData.missions);
             setIsAuthenticated(true);
-            router.push('/missions');
+            // Let the useEffect hook handle redirect and data loading
+            window.location.reload(); // Force a reload to ensure fresh state
             return;
         }
     }
@@ -168,6 +177,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         ...initialUser, 
         name: name, 
         title: getTitleForLevel(1),
+        avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
         lastDailyReset: now.toISOString(),
         lastWeeklyReset: now.toISOString(),
         lastMonthlyReset: now.toISOString(),
@@ -186,6 +196,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     router.push('/');
   };
 
+  const updateUser = (updatedData: Partial<User>) => {
+    const updatedUser = { ...user, ...updatedData };
+    saveData(updatedUser, missions);
+    toast({
+        title: 'Profil Diperbarui!',
+        description: 'Informasi profil Anda telah berhasil disimpan.',
+        variant: 'success'
+    });
+  };
+
   const completeMission = (missionId: string, bonusXp: number = 0, overrideXp?: number) => {
     if (user.completedMissions.includes(missionId)) {
       return;
@@ -200,53 +220,49 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
     const totalXpGained = xpFromMission + bonusXp;
     
-    const updatedUser = { ...user };
+    let updatedUser: User;
     let finalMissions = [...missions];
 
-    updatedUser.xp += totalXpGained;
-    
-    while (updatedUser.xp >= updatedUser.xpToNextLevel) {
-      leveledUp = true;
-      updatedUser.xp -= updatedUser.xpToNextLevel;
-      updatedUser.level += 1;
-      updatedUser.xpToNextLevel = updatedUser.level * 150;
-      newTitle = getTitleForLevel(updatedUser.level);
-    }
-    updatedUser.title = newTitle;
-    updatedUser.completedMissions = [...user.completedMissions, missionId];
-    
-    // Replace daily mission if completed
-    if (mission.category === 'Harian') {
-        const currentMissionIds = finalMissions.map(m => m.id);
-        const newMission = getRandomMissions(dailyMissionPool, 1, currentMissionIds)[0];
-        if (newMission) {
-            const missionIndex = finalMissions.findIndex(m => m.id === missionId);
-            if(missionIndex !== -1) {
-                finalMissions[missionIndex] = newMission;
+    setUser(currentUser => {
+        updatedUser = { ...currentUser };
+        updatedUser.xp += totalXpGained;
+        
+        while (updatedUser.xp >= updatedUser.xpToNextLevel) {
+          leveledUp = true;
+          updatedUser.xp -= updatedUser.xpToNextLevel;
+          updatedUser.level += 1;
+          updatedUser.xpToNextLevel = updatedUser.level * 150;
+          newTitle = getTitleForLevel(updatedUser.level);
+        }
+        updatedUser.title = newTitle;
+        updatedUser.completedMissions = [...currentUser.completedMissions, missionId];
+        
+        // Replace daily mission if completed
+        if (mission.category === 'Harian') {
+            const currentMissionIds = finalMissions.map(m => m.id);
+            const newMission = getRandomMissions(dailyMissionPool, 1, currentMissionIds)[0];
+            if (newMission) {
+                const missionIndex = finalMissions.findIndex(m => m.id === missionId);
+                if(missionIndex !== -1) {
+                    finalMissions[missionIndex] = newMission;
+                }
             }
         }
-    }
 
-    saveData(updatedUser, finalMissions);
-    
-    if (leveledUp) {
-      toast({
-        title: 'Naik Level!',
-        description: `Selamat! Anda telah mencapai Level ${updatedUser.level} dan meraih gelar "${updatedUser.title}".`,
-        variant: 'success',
-      });
-    }
+        saveData(updatedUser, finalMissions);
+
+        if (leveledUp) {
+          toast({
+            title: 'Naik Level!',
+            description: `Selamat! Anda telah mencapai Level ${updatedUser.level} dan meraih gelar "${updatedUser.title}".`,
+            variant: 'success',
+          });
+        }
+        return updatedUser;
+    });
   };
 
-  const value = { user, missions, isAuthenticated, completeMission, login, logout, register, isLoading };
-
-  if (isLoading) {
-    return (
-        <div className="flex min-h-screen w-full items-center justify-center">
-            <p>Memuat...</p> 
-        </div>
-    );
-  }
+  const value = { user, missions, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser };
 
   return (
     <UserDataContext.Provider value={value}>

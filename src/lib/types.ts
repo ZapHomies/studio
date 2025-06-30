@@ -1,5 +1,6 @@
 export interface User {
   name: string;
+  avatarUrl: string;
   level: number;
   xp: number;
   xpToNextLevel: number;

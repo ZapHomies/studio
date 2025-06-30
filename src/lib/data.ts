@@ -6,8 +6,18 @@ const stringToId = (str: string) => {
   return str.toLowerCase().replace(/\s+/g, '-').slice(0, 20);
 };
 
+export const avatarPool: { url: string; hint: string }[] = [
+  { url: 'https://placehold.co/100x100/3498db/ffffff.png', hint: 'muslim man' },
+  { url: 'https://placehold.co/100x100/e74c3c/ffffff.png', hint: 'muslim woman' },
+  { url: 'https://placehold.co/100x100/2ecc71/ffffff.png', hint: 'man beard' },
+  { url: 'https://placehold.co/100x100/f1c40f/ffffff.png', hint: 'woman niqab' },
+  { url: 'https://placehold.co/100x100/9b59b6/ffffff.png', hint: 'islamic boy' },
+  { url: 'https://placehold.co/100x100/1abc9c/ffffff.png', hint: 'islamic girl' },
+];
+
 export const initialUser: User = {
   name: 'Abdullah',
+  avatarUrl: avatarPool[0].url,
   level: 1,
   xp: 0,
   xpToNextLevel: 150,
