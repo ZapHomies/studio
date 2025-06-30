@@ -45,8 +45,8 @@ export default function RecitationTool() {
       }, 1000);
     } catch (err) {
       toast({
-        title: 'Permission Denied',
-        description: 'Microphone access is required to record recitation.',
+        title: 'Izin Ditolak',
+        description: 'Akses mikrofon diperlukan untuk merekam bacaan.',
         variant: 'destructive',
       });
       setStatus('idle');
@@ -76,11 +76,11 @@ export default function RecitationTool() {
         setFeedback(result.feedback);
       } catch (error) {
         toast({
-          title: 'Analysis Failed',
-          description: 'Could not analyze the recording. Please try again.',
+          title: 'Analisis Gagal',
+          description: 'Tidak dapat menganalisis rekaman. Silakan coba lagi.',
           variant: 'destructive',
         });
-        setFeedback('An error occurred. Please try again.');
+        setFeedback('Terjadi kesalahan. Silakan coba lagi.');
       } finally {
         setStatus('finished');
       }
@@ -99,21 +99,21 @@ export default function RecitationTool() {
         return (
           <Button onClick={stopRecording} size="lg" variant="destructive" className="w-full">
             <Square className="mr-2 h-5 w-5" />
-            Stop Recording ({formatTime(timer)})
+            Hentikan Rekaman ({formatTime(timer)})
           </Button>
         );
       case 'processing':
         return (
           <Button disabled size="lg" className="w-full">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Processing...
+            Memproses...
           </Button>
         );
       default:
         return (
           <Button onClick={startRecording} size="lg" className="w-full">
             <Mic className="mr-2 h-5 w-5" />
-            Start Recording
+            Mulai Merekam
           </Button>
         );
     }
@@ -128,7 +128,7 @@ export default function RecitationTool() {
             <CardHeader>
               <CardTitle className="font-headline flex items-center gap-2">
                 <BookOpen />
-                Recitation Feedback
+                Umpan Balik Bacaan
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -138,8 +138,8 @@ export default function RecitationTool() {
         )}
         {status === 'idle' && !feedback && (
             <div className="text-center text-muted-foreground p-8">
-                <p>Press "Start Recording" to begin your recitation.</p>
-                <p className="text-sm mt-2">Recite a verse from the Quran and get feedback on your Tajweed.</p>
+                <p>Tekan "Mulai Merekam" untuk memulai bacaan Anda.</p>
+                <p className="text-sm mt-2">Bacalah sebuah ayat dari Al-Quran dan dapatkan umpan balik tentang Tajwid Anda.</p>
             </div>
         )}
       </CardContent>

@@ -5,7 +5,7 @@ export default function ProfilePage() {
     <div className="container mx-auto max-w-2xl px-4 py-8">
        <header className="mb-8 flex items-center">
         <h1 className="font-headline text-4xl font-bold text-primary">
-          Your Profile
+          Profil Anda
         </h1>
       </header>
       <ProfileDisplay />

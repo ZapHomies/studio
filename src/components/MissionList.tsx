@@ -49,10 +49,10 @@ export default function MissionList() {
                   {isCompleted ? (
                     <>
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Completed
+                      Selesai
                     </>
                   ) : (
-                    'Complete Mission'
+                    'Selesaikan Misi'
                   )}
                 </Button>
               </CardFooter>

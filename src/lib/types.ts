@@ -4,6 +4,7 @@ export interface User {
   xp: number;
   xpToNextLevel: number;
   completedMissions: string[];
+  title: string;
 }
 
 export interface Mission {

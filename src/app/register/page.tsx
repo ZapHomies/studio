@@ -10,26 +10,22 @@ import { UserDataContext } from '@/context/UserDataProvider';
 import { KaabaIcon } from '@/components/icons/KaabaIcon';
 import { Loader2 } from 'lucide-react';
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [name, setName] = useState('');
-  const { login, isLoading } = useContext(UserDataContext);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { register } = useContext(UserDataContext);
+  const [isRegistering, setIsRegistering] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      setIsLoggingIn(true);
+      setIsRegistering(true);
       // Simulate network delay
       setTimeout(() => {
-        login(name.trim());
-        // No need to setIsLoggingIn(false) as the context will trigger a redirect
+        register(name.trim());
+        // No need to setIsRegistering(false) as context will redirect
       }, 500);
     }
   };
-
-  if (isLoading) {
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -40,21 +36,21 @@ export default function LoginPage() {
             DeenDaily
           </h1>
            <p className="text-center text-lg text-muted-foreground mt-2">
-            Selamat datang kembali!
+            Mulailah perjalanan iman Anda.
           </p>
         </header>
         <Card>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleRegister}>
             <CardHeader>
-              <CardTitle className="font-headline text-2xl">Login</CardTitle>
-              <CardDescription>Masukkan nama Anda untuk melanjutkan.</CardDescription>
+              <CardTitle className="font-headline text-2xl">Buat Akun Baru</CardTitle>
+              <CardDescription>Pilih nama pengguna untuk memulai.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nama</Label>
                 <Input
                   id="name"
-                  placeholder="Contoh: Abdullah"
+                  placeholder="Contoh: Fatimah"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -62,14 +58,14 @@ export default function LoginPage() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoggingIn}>
-                {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Masuk
+              <Button type="submit" className="w-full" disabled={isRegistering}>
+                {isRegistering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Daftar
               </Button>
                <p className="text-sm text-center text-muted-foreground">
-                Belum punya akun?{' '}
-                <Link href="/register" className="font-medium text-primary hover:underline">
-                  Daftar di sini
+                Sudah punya akun?{' '}
+                <Link href="/" className="font-medium text-primary hover:underline">
+                  Login di sini
                 </Link>
               </p>
             </CardFooter>

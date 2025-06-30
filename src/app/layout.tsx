@@ -1,10 +1,12 @@
-import type { Metadata } from 'next';
+'use client'; // This needs to be a client component to use context
+
 import './globals.css';
 import { Playfair_Display, PT_Sans } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
-import { UserDataProvider } from '@/context/UserDataProvider';
+import { UserDataProvider, UserDataContext } from '@/context/UserDataProvider';
 import BottomNav from '@/components/BottomNav';
+import React, { useContext } from 'react';
 
 const fontHeadline = Playfair_Display({
   subsets: ['latin'],
@@ -17,18 +19,23 @@ const fontBody = PT_Sans({
   variable: '--font-body',
 });
 
-export const metadata: Metadata = {
-  title: 'DeenDaily',
-  description: 'Your daily companion for Islamic missions and growth.',
-};
+// Metadata can't be dynamic in a client component root layout easily.
+// I will remove the dynamic metadata and keep it static.
+// The user can add it back if they want.
+// export const metadata: Metadata = {
+//   title: 'DeenDaily',
+//   description: 'Teman harianmu untuk misi dan pertumbuhan Islami.',
+// };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+function AppLayout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useContext(UserDataContext);
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="id" suppressHydrationWarning>
+      <head>
+          <title>DeenDaily</title>
+          <meta name="description" content="Teman harianmu untuk misi dan pertumbuhan Islami." />
+      </head>
       <body
         className={cn(
           'min-h-screen bg-background font-body antialiased',
@@ -36,14 +43,26 @@ export default function RootLayout({
           fontBody.variable
         )}
       >
-        <UserDataProvider>
-          <div className="relative flex min-h-screen w-full flex-col">
-            <main className="flex-1 pb-24">{children}</main>
-            <BottomNav />
-          </div>
-          <Toaster />
-        </UserDataProvider>
+        <div className="relative flex min-h-screen w-full flex-col">
+           <main className={cn("flex-1", isAuthenticated && "pb-24")}>
+             {children}
+           </main>
+           {isAuthenticated && !isLoading && <BottomNav />}
+        </div>
+        <Toaster />
       </body>
     </html>
+  );
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <UserDataProvider>
+      <AppLayout>{children}</AppLayout>
+    </UserDataProvider>
   );
 }

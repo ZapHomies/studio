@@ -6,9 +6,9 @@ import { Home, Mic, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', icon: Home, label: 'Missions' },
-  { href: '/recitation', icon: Mic, label: 'Recite' },
-  { href: '/profile', icon: User, label: 'Profile' },
+  { href: '/missions', icon: Home, label: 'Misi' },
+  { href: '/recitation', icon: Mic, label: 'Mengaji' },
+  { href: '/profile', icon: User, label: 'Profil' },
 ];
 
 export default function BottomNav() {

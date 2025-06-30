@@ -84,34 +84,34 @@ export default function MissionCompletionDialog({
           setStatus('success');
           completeMission(mission.id);
           toast({
-            title: 'Mission Complete!',
-            description: `You've earned ${mission.xp} XP. Well done!`,
+            title: 'Misi Selesai!',
+            description: `Anda mendapatkan ${mission.xp} XP. Kerja bagus!`,
           });
           setTimeout(resetState, 2000); // Close dialog after a short delay on success
         } else {
           setStatus('error');
           toast({
-            title: 'Submission Not Approved',
+            title: 'Pengajuan Ditolak',
             description: result.reason,
             variant: 'destructive',
           });
         }
       } catch (error) {
         setStatus('error');
-        setVerificationFeedback('An unexpected error occurred during verification.');
+        setVerificationFeedback('Terjadi kesalahan tak terduga saat verifikasi.');
         toast({
-          title: 'Verification Failed',
-          description: 'Could not verify the image. Please try again.',
+          title: 'Verifikasi Gagal',
+          description: 'Tidak dapat memverifikasi gambar. Silakan coba lagi.',
           variant: 'destructive',
         });
       }
     };
     reader.onerror = () => {
       setStatus('error');
-      setVerificationFeedback('Could not read the file.');
+      setVerificationFeedback('Tidak dapat membaca file.');
       toast({
-        title: 'File Error',
-        description: 'There was an issue reading your file.',
+        title: 'Kesalahan File',
+        description: 'Terjadi masalah saat membaca file Anda.',
         variant: 'destructive',
       });
     };
@@ -127,7 +127,7 @@ export default function MissionCompletionDialog({
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <label htmlFor="mission-photo" className="text-sm font-medium">
-              Proof of Completion
+              Bukti Penyelesaian
             </label>
             <Input
               id="mission-photo"
@@ -140,25 +140,25 @@ export default function MissionCompletionDialog({
           </div>
           {preview && (
             <div className="relative mt-2 h-48 w-full overflow-hidden rounded-md border">
-              <Image src={preview} alt="Mission proof preview" layout="fill" objectFit="cover" />
+              <Image src={preview} alt="Pratinjau bukti misi" layout="fill" objectFit="cover" />
             </div>
           )}
           {status !== 'idle' && verificationFeedback && (
              <Alert variant={status === 'success' ? 'success' : 'destructive'} className="mt-4">
                {status === 'success' && <CheckCircle className="h-4 w-4" />}
                {status === 'error' && <XCircle className="h-4 w-4" />}
-               <AlertTitle>{status === 'success' ? 'Approved!' : 'Needs Review'}</AlertTitle>
+               <AlertTitle>{status === 'success' ? 'Disetujui!' : 'Perlu Tinjauan'}</AlertTitle>
                <AlertDescription>{verificationFeedback}</AlertDescription>
              </Alert>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={resetState} disabled={status === 'verifying'}>
-            Cancel
+            Batal
           </Button>
           <Button onClick={handleVerify} disabled={!file || status === 'verifying' || status === 'success'}>
             {status === 'verifying' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {status === 'verifying' ? 'Verifying...' : 'Submit for Verification'}
+            {status === 'verifying' ? 'Memverifikasi...' : 'Kirim untuk Verifikasi'}
           </Button>
         </DialogFooter>
       </DialogContent>

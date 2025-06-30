@@ -6,31 +6,32 @@ export const initialUser: User = {
   xp: 20,
   xpToNextLevel: 150,
   completedMissions: [],
+  title: 'Muslim Baru',
 };
 
 export const initialMissions: Mission[] = [
   {
     id: 'mission-1',
-    title: 'Complete 5 Daily Prayers',
-    description: 'Perform the five obligatory daily prayers: Fajr, Dhuhr, Asr, Maghrib, and Isha. Upload a picture of your prayer mat after one of the prayers.',
+    title: 'Selesaikan 5 Salat Wajib',
+    description: 'Lakukan salat lima waktu: Subuh, Zuhur, Asar, Magrib, dan Isya. Unggah foto sajadah Anda setelah salah satu salat.',
     xp: 50,
   },
   {
     id: 'mission-2',
-    title: 'Act of Kindness',
-    description: 'Perform an act of kindness towards someone. This could be helping a neighbor, feeding a stray animal, or giving charity. Capture a photo that represents your good deed.',
+    title: 'Berbuat Kebaikan',
+    description: 'Lakukan satu perbuatan baik kepada seseorang. Ini bisa berupa membantu tetangga, memberi makan hewan liar, atau bersedekah. Ambil foto yang mewakili perbuatan baik Anda.',
     xp: 30,
   },
   {
     id: 'mission-3',
-    title: 'Read a Page of the Quran',
-    description: 'Read at least one page from the Holy Quran with reflection on its meaning. Submit a photo of the page you read.',
+    title: 'Membaca Satu Halaman Al-Quran',
+    description: 'Baca setidaknya satu halaman dari Al-Quran dan renungkan maknanya. Kirimkan foto halaman yang Anda baca.',
     xp: 25,
   },
     {
     id: 'mission-4',
-    title: 'Make Dua for Someone',
-    description: 'Take a moment to make a sincere prayer (Dua) for a family member, a friend, or someone in need. Upload a photo of your hands in prayer.',
+    title: 'Mendoakan Orang Lain',
+    description: 'Luangkan waktu sejenak untuk berdoa (Dua) dengan tulus untuk anggota keluarga, teman, atau seseorang yang membutuhkan. Unggah foto tangan Anda saat berdoa.',
     xp: 20,
   },
 ];
