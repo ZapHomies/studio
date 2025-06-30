@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { provideRecitationFeedback } from '@/ai/flows/provide-recitation-feedback';
 import { Mic, Square, Loader2, BookOpen } from 'lucide-react';
+import { UserDataContext } from '@/context/UserDataProvider';
 
 type RecordingStatus = 'idle' | 'recording' | 'processing' | 'finished';
 
@@ -18,6 +19,7 @@ export default function RecitationTool() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
+  const { user, missions, completeMission } = useContext(UserDataContext);
 
   useEffect(() => {
     return () => {
@@ -74,6 +76,17 @@ export default function RecitationTool() {
       try {
         const result = await provideRecitationFeedback({ audioDataUri });
         setFeedback(result.feedback);
+        
+        // Auto-complete Quran mission ('mission-3')
+        const quranMission = missions.find(m => m.id === 'mission-3');
+        if (quranMission && !user.completedMissions.includes(quranMission.id)) {
+            completeMission(quranMission.id);
+            toast({
+                title: "Misi Otomatis Selesai!",
+                description: `Anda menyelesaikan "${quranMission.title}" dan mendapatkan ${quranMission.xp} XP.`,
+                variant: 'success'
+            });
+        }
       } catch (error) {
         toast({
           title: 'Analisis Gagal',

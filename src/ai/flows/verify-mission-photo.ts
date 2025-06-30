@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Alur verifikasi foto misi untuk memverifikasi apakah foto yang dikirimkan pengguna relevan dengan misi harian tertentu.
+ * @fileOverview Alur verifikasi foto misi untuk memverifikasi apakah foto yang dikirimkan pengguna relevan dengan misi harian tertentu untuk mendapatkan bonus.
  *
  * - verifyMissionPhoto - Sebuah fungsi yang menangani proses verifikasi foto misi.
  * - VerifyMissionPhotoInput - Tipe input untuk fungsi verifyMissionPhoto.
@@ -21,7 +21,7 @@ const VerifyMissionPhotoInputSchema = z.object({
 export type VerifyMissionPhotoInput = z.infer<typeof VerifyMissionPhotoInputSchema>;
 
 const VerifyMissionPhotoOutputSchema = z.object({
-  isRelevant: z.boolean().describe('Apakah foto tersebut relevan dengan misi.'),
+  isRelevant: z.boolean().describe('Apakah foto tersebut relevan dengan misi untuk mendapatkan bonus.'),
   reason: z.string().describe("Alasan AI untuk penentuan relevansinya."),
 });
 export type VerifyMissionPhotoOutput = z.infer<typeof VerifyMissionPhotoOutputSchema>;
@@ -34,17 +34,17 @@ const prompt = ai.definePrompt({
   name: 'verifyMissionPhotoPrompt',
   input: {schema: VerifyMissionPhotoInputSchema},
   output: {schema: VerifyMissionPhotoOutputSchema},
-  prompt: `Anda adalah asisten AI yang teliti yang bertugas memverifikasi apakah foto yang dikirimkan pengguna relevan dengan misi harian Islami mereka. Analisis foto dengan cermat dalam konteks deskripsi misi.
+  prompt: `Anda adalah asisten AI yang ramah dan positif yang bertugas memverifikasi apakah foto yang dikirimkan pengguna cukup relevan dengan misi harian Islami mereka untuk mendapatkan XP bonus.
 
 Deskripsi Misi: {{{missionDescription}}}
 Foto: {{media url=photoDataUri}}
 
 Tugas Anda adalah:
-1. Tentukan apakah foto tersebut secara logis dapat dianggap sebagai bukti penyelesaian misi.
-2. Berikan alasan yang jelas dan singkat untuk keputusan Anda dalam bahasa Indonesia.
-3. Bersikaplah adil namun jangan mudah tertipu. Jika foto tidak jelas atau tidak berhubungan, tolak. Misalnya, untuk misi 'Salat 5 waktu', foto sajadah sudah cukup, tetapi foto pemandangan acak tidak. Untuk 'sedekah', foto kotak amal atau tangkapan layar transfer sudah cukup.
+1. Tentukan apakah foto tersebut secara logis dapat dianggap sebagai bukti penyelesaian misi untuk mendapatkan bonus. Berikan penilaian yang murah hati dan positif jika memungkinkan.
+2. Berikan alasan yang jelas, singkat, dan mendukung untuk keputusan Anda dalam bahasa Indonesia.
+3. Tujuannya adalah untuk mendorong, bukan menghakimi. Jika foto sangat tidak berhubungan (misal: foto mobil untuk misi salat), tolak dengan sopan. Jika ada sedikit relevansi (misal: foto langit saat maghrib untuk misi salat maghrib), setujui.
 
-Atur output \`isRelevant\` ke true jika foto relevan, dan false jika tidak. Berikan alasan Anda di bidang \`reason\`.`,
+Atur output \`isRelevant\` ke true jika foto relevan untuk bonus, dan false jika tidak. Selalu berikan alasan yang membangun di bidang \`reason\`.`,
 });
 
 const verifyMissionPhotoFlow = ai.defineFlow(

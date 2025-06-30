@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useContext, useRef, ChangeEvent } from 'react';
+import { useState, useContext, useRef, ChangeEvent, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Dialog,
@@ -17,7 +17,7 @@ import { type Mission } from '@/lib/types';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { verifyMissionPhoto } from '@/ai/flows/verify-mission-photo';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
 
 interface MissionCompletionDialogProps {
   mission: Mission | null;
@@ -40,6 +40,17 @@ export default function MissionCompletionDialog({
   const { toast } = useToast();
   const { completeMission } = useContext(UserDataContext);
 
+  const resetState = () => {
+    setFile(null);
+    setPreview(null);
+    setStatus('idle');
+    setVerificationFeedback('');
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+    onOpenChange(false);
+  };
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -54,12 +65,15 @@ export default function MissionCompletionDialog({
     }
   };
 
-  const resetState = () => {
-    setFile(null);
-    setPreview(null);
-    setStatus('idle');
-    setVerificationFeedback('');
-    onOpenChange(false);
+  const handleCompleteWithoutProof = () => {
+    if (!mission) return;
+    completeMission(mission.id);
+    toast({
+        title: 'Misi Selesai!',
+        description: `Anda mendapatkan ${mission.xp} XP.`,
+        variant: 'success'
+    });
+    resetState();
   };
 
   const handleVerify = async () => {
@@ -82,16 +96,17 @@ export default function MissionCompletionDialog({
 
         if (result.isRelevant) {
           setStatus('success');
-          completeMission(mission.id);
+          completeMission(mission.id, mission.bonusXp);
           toast({
-            title: 'Misi Selesai!',
-            description: `Anda mendapatkan ${mission.xp} XP. Kerja bagus!`,
+            title: 'Bonus Didapat!',
+            description: `Bukti terverifikasi! Anda mendapatkan total ${mission.xp + (mission.bonusXp || 0)} XP.`,
+            variant: 'success'
           });
-          setTimeout(resetState, 2000); // Close dialog after a short delay on success
+          setTimeout(resetState, 2000); 
         } else {
           setStatus('error');
           toast({
-            title: 'Pengajuan Ditolak',
+            title: 'Pengajuan Bonus Ditolak',
             description: result.reason,
             variant: 'destructive',
           });
@@ -117,9 +132,28 @@ export default function MissionCompletionDialog({
     };
   };
 
+  useEffect(() => {
+    if (!isOpen) {
+        // Give animations time to finish before resetting state
+        setTimeout(() => {
+            setStatus('idle');
+            setFile(null);
+            setPreview(null);
+            setVerificationFeedback('');
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }, 300);
+    }
+  }, [isOpen]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => {
+          if (status === 'verifying') {
+            e.preventDefault();
+          }
+        }}>
         <DialogHeader>
           <DialogTitle className="font-headline">{mission?.title}</DialogTitle>
           <DialogDescription>{mission?.description}</DialogDescription>
@@ -127,7 +161,7 @@ export default function MissionCompletionDialog({
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <label htmlFor="mission-photo" className="text-sm font-medium">
-              Bukti Penyelesaian
+              Unggah Bukti (Opsional untuk Bonus XP)
             </label>
             <Input
               id="mission-photo"
@@ -152,13 +186,13 @@ export default function MissionCompletionDialog({
              </Alert>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={resetState} disabled={status === 'verifying'}>
-            Batal
+        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
+          <Button variant="secondary" onClick={handleCompleteWithoutProof} disabled={status === 'verifying' || status === 'success'}>
+            Selesaikan ({mission?.xp} XP)
           </Button>
           <Button onClick={handleVerify} disabled={!file || status === 'verifying' || status === 'success'}>
-            {status === 'verifying' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {status === 'verifying' ? 'Memverifikasi...' : 'Kirim untuk Verifikasi'}
+            {status === 'verifying' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2"/>}
+            {status === 'verifying' ? 'Memverifikasi...' : `Klaim Bonus (+${mission?.bonusXp || 0} XP)`}
           </Button>
         </DialogFooter>
       </DialogContent>

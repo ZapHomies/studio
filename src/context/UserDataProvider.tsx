@@ -10,7 +10,7 @@ interface UserDataContextType {
   user: User;
   missions: Mission[];
   isAuthenticated: boolean;
-  completeMission: (missionId: string) => void;
+  completeMission: (missionId: string, bonusXp?: number) => void;
   login: (name: string) => void;
   logout: () => void;
   register: (name: string) => void;
@@ -101,7 +101,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     router.push('/');
   };
 
-  const completeMission = (missionId: string) => {
+  const completeMission = (missionId: string, bonusXp: number = 0) => {
     if (user.completedMissions.includes(missionId)) {
       return;
     }
@@ -110,12 +110,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!mission) return;
 
     setUser((prevUser) => {
-      let newXp = prevUser.xp + mission.xp;
+      const totalXpGained = mission.xp + bonusXp;
+      let newXp = prevUser.xp + totalXpGained;
       let newLevel = prevUser.level;
       let newXpToNextLevel = prevUser.xpToNextLevel;
       let newTitle = prevUser.title;
 
-      if (newXp >= newXpToNextLevel) {
+      while (newXp >= newXpToNextLevel) {
         newLevel += 1;
         newXp -= newXpToNextLevel;
         newXpToNextLevel = newLevel * 150;
@@ -123,6 +124,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         toast({
           title: 'Naik Level!',
           description: `Selamat! Anda telah mencapai Level ${newLevel} dan meraih gelar ${newTitle}.`,
+          variant: 'success',
         });
       }
 

@@ -12,4 +12,6 @@ export interface Mission {
   title: string;
   description: string;
   xp: number;
+  type: 'photo' | 'action' | 'auto';
+  bonusXp?: number;
 }
