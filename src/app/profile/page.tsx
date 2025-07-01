@@ -8,9 +8,11 @@ import { Edit, Palette, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { UserDataContext } from '@/context/UserDataProvider';
+import RewardsSheet from '@/components/RewardsSheet';
 
 export default function ProfilePage() {
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  const [isRewardsSheetOpen, setIsRewardsSheetOpen] = useState(false);
   const { logout } = useContext(UserDataContext);
 
   return (
@@ -19,13 +21,13 @@ export default function ProfilePage() {
         <h1 className="font-headline text-4xl font-bold text-primary sm:text-5xl">
           Profil Anda
         </h1>
-        <Button variant="outline" onClick={() => setIsSheetOpen(true)} className="shadow-sm">
+        <Button variant="outline" onClick={() => setIsEditSheetOpen(true)} className="shadow-sm">
             <Edit className="mr-2 h-4 w-4" />
             Ubah Profil
         </Button>
       </header>
       
-      <ProfileDisplay />
+      <ProfileDisplay onOpenRewards={() => setIsRewardsSheetOpen(true)} />
       
       <Card className="shadow-lg">
           <CardHeader>
@@ -39,7 +41,8 @@ export default function ProfilePage() {
           </CardContent>
       </Card>
       
-      <EditProfileSheet isOpen={isSheetOpen} onOpenChange={setIsSheetOpen} />
+      <EditProfileSheet isOpen={isEditSheetOpen} onOpenChange={setIsEditSheetOpen} />
+      <RewardsSheet isOpen={isRewardsSheetOpen} onOpenChange={setIsRewardsSheetOpen} />
 
       <Button onClick={logout} variant="outline" className="h-12 w-full text-base sm:text-lg">
         <LogOut className="mr-2 h-5 w-5" />

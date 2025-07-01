@@ -1,7 +1,6 @@
 'use client';
 
 import { useContext } from 'react';
-import Link from 'next/link';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,7 +11,11 @@ import { Gift, Award, CheckCircle, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { rewards } from '@/lib/data';
 
-export default function ProfileDisplay() {
+interface ProfileDisplayProps {
+  onOpenRewards: () => void;
+}
+
+export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
   const { currentUser, missions } = useContext(UserDataContext);
   
   if (!currentUser) {
@@ -83,11 +86,9 @@ export default function ProfileDisplay() {
                 </Card>
             </div>
 
-            <Button asChild className="h-12 w-full text-base sm:text-lg">
-                <Link href="/rewards">
-                    <Gift className="mr-2 h-5 w-5" />
-                    Toko Hadiah
-                </Link>
+            <Button onClick={onOpenRewards} className="h-12 w-full text-base sm:text-lg">
+                <Gift className="mr-2 h-5 w-5" />
+                Toko Hadiah
             </Button>
         </CardContent>
       </Card>
