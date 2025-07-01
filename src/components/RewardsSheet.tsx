@@ -163,18 +163,18 @@ export default function RewardsSheet({ isOpen, onOpenChange }: RewardsSheetProps
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
             <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg">
                 <SheetHeader className="p-6 pb-4">
-                    <SheetTitle className="flex items-center gap-3 font-headline text-2xl">
+                    <SheetTitle className="flex items-center justify-center sm:justify-start gap-3 font-headline text-2xl">
                         <Gift className="h-7 w-7 text-primary"/>
                         Toko Hadiah
                     </SheetTitle>
                     <SheetDescription>
                         Gunakan XP yang telah Anda kumpulkan untuk menukarkan hadiah eksklusif!
-                         {currentUser && (
-                            <div className="mt-4 rounded-full bg-amber-400/20 px-4 py-2 text-sm font-bold text-amber-600 inline-block">
-                                XP Anda: {currentUser.xp.toLocaleString()}
-                            </div>
-                        )}
                     </SheetDescription>
+                    {currentUser && (
+                        <div className="rounded-full bg-amber-400/20 px-4 py-2 text-sm font-bold text-amber-600 inline-block">
+                            XP Anda: {currentUser.xp.toLocaleString()}
+                        </div>
+                    )}
                 </SheetHeader>
                 <ScrollArea className="flex-grow px-6">
                    <div className="space-y-8 py-4">
