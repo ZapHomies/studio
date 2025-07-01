@@ -17,7 +17,7 @@ import { type Mission } from '@/lib/types';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { verifyMissionPhoto } from '@/ai/flows/verify-mission-photo';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Zap, Send } from 'lucide-react';
 
 interface MissionCompletionDialogProps {
   mission: Mission | null;
@@ -39,7 +39,7 @@ export default function MissionCompletionDialog({
   const [verificationFeedback, setVerificationFeedback] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { completeMission } = useContext(UserDataContext);
+  const { completeMission } = useContext(UserDataProvider);
 
   const resetState = () => {
     setFile(null);
@@ -161,7 +161,7 @@ export default function MissionCompletionDialog({
           }
         }}>
         <DialogHeader>
-          <DialogTitle className="font-headline">{mission?.title}</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">{mission?.title}</DialogTitle>
           <DialogDescription>{mission?.description}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -180,7 +180,7 @@ export default function MissionCompletionDialog({
             />
           </div>
           {preview && (
-            <div className="relative mt-2 h-48 w-full overflow-hidden rounded-md border">
+            <div className="relative mt-2 aspect-video w-full overflow-hidden rounded-md border">
               <Image src={preview} alt="Pratinjau bukti misi" layout="fill" objectFit="cover" />
             </div>
           )}
@@ -193,13 +193,13 @@ export default function MissionCompletionDialog({
              </Alert>
           )}
         </div>
-        <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="secondary" onClick={handleCompleteWithoutProof} disabled={isBusy}>
-            {isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4"/>}
             Selesaikan ({mission?.xp} XP)
           </Button>
           <Button onClick={handleVerify} disabled={!file || isBusy}>
-            {status === 'verifying' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2"/>}
+            {status === 'verifying' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4"/>}
             {status === 'verifying' ? 'Memverifikasi...' : `Klaim Bonus (+${mission?.bonusXp || 0} XP)`}
           </Button>
         </DialogFooter>

@@ -20,31 +20,41 @@ export default function LoginPage() {
     if (name.trim()) {
       setIsLoggingIn(true);
       await login(name.trim());
-      // The loading state will be handled by the context redirecting or showing a toast
-      // We can set it to false, but the context's isLoading is more accurate
+      // The context will handle redirecting and loading state changes.
+      // We set this to false here, but the context's `isLoading` is the source of truth.
       setIsLoggingIn(false); 
     }
   };
 
+  // Combine local loading state (during the login action) with context's global loading state
   const isLoading = isContextLoading || isLoggingIn;
 
-  if (isContextLoading && !isLoggingIn) { // Show a general loader if context is loading and we aren't in the middle of a login action
-    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  // Show a full-page loader if the context is busy (e.g., rehydrating session or processing login)
+  if (isContextLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <KaabaIcon className="h-12 w-12 animate-pulse text-primary" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary/80" />
+          <p className="text-muted-foreground">Memuat sesi...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <header className="mb-8 flex flex-col items-center justify-center text-center">
-          <KaabaIcon className="h-12 w-12 text-primary" />
+          <KaabaIcon className="h-16 w-16 text-primary" />
           <h1 className="ml-4 mt-4 font-headline text-5xl font-bold text-primary">
             DeenDaily
           </h1>
-           <p className="text-center text-lg text-muted-foreground mt-2">
+           <p className="mt-2 text-center text-lg text-muted-foreground">
             Selamat datang kembali!
           </p>
         </header>
-        <Card>
+        <Card className="shadow-lg">
           <form onSubmit={handleLogin}>
             <CardHeader>
               <CardTitle className="font-headline text-2xl">Login</CardTitle>
@@ -59,11 +69,12 @@ export default function LoginPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !name.trim()}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Masuk
               </Button>

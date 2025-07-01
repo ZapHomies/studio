@@ -136,23 +136,23 @@ export default function RecitationTool() {
 
   return (
     <Card className="shadow-lg">
-      <CardContent className="p-6 flex flex-col items-center gap-6">
+      <CardContent className="flex flex-col items-center gap-6 p-6">
         {getButton()}
         
         {feedback && (
-          <div className="w-full rounded-lg border bg-background/50 p-4 space-y-2">
-            <h3 className="font-headline flex items-center gap-2 text-lg font-semibold">
+          <div className="w-full space-y-2 rounded-lg border bg-background/50 p-4">
+            <h3 className="flex items-center gap-2 font-headline text-lg font-semibold">
               <BookOpen className="h-5 w-5"/>
               Umpan Balik Bacaan
             </h3>
-            <p className="text-foreground whitespace-pre-wrap">{feedback}</p>
+            <p className="whitespace-pre-wrap text-foreground">{feedback}</p>
           </div>
         )}
 
         {status === 'idle' && !feedback && (
-            <div className="text-center text-muted-foreground p-8">
+            <div className="p-8 text-center text-muted-foreground">
                 <p>Tekan "Mulai Merekam" untuk memulai bacaan Anda.</p>
-                <p className="text-sm mt-2">Bacalah sebuah ayat dari Al-Quran dan dapatkan umpan balik tentang Tajwid Anda.</p>
+                <p className="mt-2 text-sm">Bacalah sebuah ayat dari Al-Quran dan dapatkan umpan balik tentang Tajwid Anda.</p>
             </div>
         )}
       </CardContent>

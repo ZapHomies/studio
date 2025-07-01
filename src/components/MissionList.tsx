@@ -18,7 +18,7 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
     const renderMissionButton = () => {
         if (isCompleted) {
             return (
-                <Button disabled className="w-full bg-success/80 hover:bg-success/80">
+                <Button disabled className="w-full bg-success/80 text-success-foreground hover:bg-success/80">
                 <CheckCircle />
                 Selesai
                 </Button>
@@ -52,18 +52,18 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
     };
     
     return (
-        <Card className="flex flex-col overflow-hidden shadow-md transition-shadow hover:shadow-lg">
+        <Card className="flex flex-col overflow-hidden border-2 border-transparent shadow-lg transition-all hover:border-primary/50 hover:shadow-xl">
             <CardHeader>
                 <CardTitle className="font-headline text-xl text-primary">{mission.title}</CardTitle>
                 <CardDescription className="text-base">{mission.description}</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="border-accent text-accent">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="border-accent text-accent-foreground bg-accent/20">
                     {mission.xp} XP
                     </Badge>
                     {mission.bonusXp && (
-                    <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white">
+                    <Badge variant="default" className="bg-amber-500 text-white hover:bg-amber-600">
                         <Zap className="mr-1 h-3 w-3" /> +{mission.bonusXp} XP Bonus
                     </Badge>
                     )}
@@ -78,7 +78,7 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
 
 
 export default function MissionList() {
-  const { missions, isLoading } = useContext(UserDataContext);
+  const { missions, isLoading, user } = useContext(UserDataContext);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [completingMissionId, setCompletingMissionId] = useState<string | null>(null);
@@ -115,28 +115,40 @@ export default function MissionList() {
   }, [missions]);
 
   const renderMissionSection = (title: string, icon: React.ReactNode, missionList: Mission[]) => {
-    if (isLoading) {
+    if (isLoading && missionList.length === 0) {
         return (
             <div className="mb-12">
-                 <h2 className="mb-4 flex items-center gap-3 font-headline text-3xl font-bold text-primary">
+                 <h2 className="mb-6 flex items-center gap-3 font-headline text-3xl font-bold text-primary md:text-4xl">
                     {icon}
                     {title}
                 </h2>
-                <div className="grid gap-6 md:grid-cols-2">
-                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                   <p className="text-muted-foreground">Membuat misi...</p>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                   <div className="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm">
+                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                     <p className="text-muted-foreground">Membuat misi baru...</p>
+                   </div>
                 </div>
             </div>
         )
     }
     if (missionList.length === 0) return null;
+
+    const allCompleted = missionList.every(m => user.completedMissions.includes(m.id));
+
     return (
       <div className="mb-12">
-        <h2 className="mb-4 flex items-center gap-3 font-headline text-3xl font-bold text-primary">
+        <h2 className="mb-6 flex items-center gap-3 font-headline text-3xl font-bold text-primary md:text-4xl">
           {icon}
           {title}
         </h2>
-        <div className="grid gap-6 md:grid-cols-2">
+        {allCompleted && title !== "Misi Harian" && (
+            <Card className="mb-6 border-dashed border-success bg-success/10 p-6 text-center text-success-foreground shadow-md">
+                <CheckCircle className="mx-auto h-12 w-12 text-success" />
+                <CardTitle className="mt-4 font-headline text-2xl">Luar Biasa!</CardTitle>
+                <CardDescription className="mt-2 text-lg">Anda telah menyelesaikan semua {title.toLowerCase()}. Nantikan tantangan baru selanjutnya!</CardDescription>
+            </Card>
+        )}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {missionList.map((mission) => (
             <MissionCard 
                 key={mission.id} 

@@ -6,7 +6,7 @@ import { type User, type Mission } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { initialUser, staticMissions, avatarPool } from '@/lib/data';
 import { useRouter, usePathname } from 'next/navigation';
-import { isToday, isThisWeek, isThisMonth, startOfWeek } from 'date-fns';
+import { isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { generateMissions } from '@/ai/flows/generate-missions';
 
 interface UserDataContextType {
@@ -17,7 +17,7 @@ interface UserDataContextType {
   completeMission: (missionId: string, bonusXp?: number, overrideXp?: number) => Promise<void>;
   login: (name: string) => Promise<void>;
   logout: () => void;
-  register: (name: string) => void;
+  register: (name: string) => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
 }
 
@@ -33,7 +33,7 @@ export const UserDataContext = createContext<UserDataContextType>({
   completeMission: async () => {},
   login: async () => {},
   logout: () => {},
-  register: () => {},
+  register: async () => {},
   updateUser: () => {},
 });
 
@@ -45,51 +45,6 @@ const getTitleForLevel = (level: number): string => {
   return 'Muslim Baru';
 };
 
-// This centralized function processes user data, handling mission resets.
-// It's a pure-like function that takes data and returns updated data.
-const processUserData = async (loadedUser: User, loadedMissions: Mission[]): Promise<{ user: User; missions: Mission[] }> => {
-    const now = new Date();
-    let userToUpdate = { ...loadedUser };
-    let missionsToUpdate = [...loadedMissions];
-
-    let missionsWereGenerated = false;
-
-    // Daily Reset
-    if (!isToday(new Date(userToUpdate.lastDailyReset))) {
-      missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Harian');
-      const { missions: newDaily } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_DAILY, category: 'Harian' });
-      missionsToUpdate.push(...newDaily);
-      userToUpdate.lastDailyReset = now.toISOString();
-      missionsWereGenerated = true;
-    }
-
-    // Weekly Reset
-    if (!isThisWeek(new Date(userToUpdate.lastWeeklyReset), { weekStartsOn: 1 })) {
-      missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Mingguan');
-      const { missions: newWeekly } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_WEEKLY, category: 'Mingguan' });
-      missionsToUpdate.push(...newWeekly);
-      userToUpdate.lastWeeklyReset = now.toISOString();
-      missionsWereGenerated = true;
-    }
-
-    // Monthly Reset
-    if (!isThisMonth(new Date(userToUpdate.lastMonthlyReset))) {
-      missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Bulanan' || m.type === 'auto'); // Keep auto-complete missions
-      const { missions: newMonthly } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
-      missionsToUpdate.push(...newMonthly);
-      userToUpdate.lastMonthlyReset = now.toISOString();
-      missionsWereGenerated = true;
-    }
-    
-    // Clear completed missions that no longer exist (except for 'auto' missions)
-    const currentMissionIds = new Set(missionsToUpdate.map(m => m.id));
-    const staticAutoMissionIds = new Set(staticMissions.filter(m => m.type === 'auto').map(m => m.id));
-    userToUpdate.completedMissions = userToUpdate.completedMissions.filter(id => currentMissionIds.has(id) || staticAutoMissionIds.has(id));
-
-    return { user: userToUpdate, missions: missionsToUpdate };
-};
-
-
 export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User>(initialUser);
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -99,43 +54,71 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Effect to persist state to localStorage whenever it changes
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      localStorage.setItem('deen-daily-data', JSON.stringify({ user, missions }));
-    }
-  }, [user, missions, isLoading, isAuthenticated]);
+  const processAndSetUserData = useCallback(async (loadedUser: User, loadedMissions: Mission[]): Promise<{ user: User, missions: Mission[] }> => {
+    const now = new Date();
+    let userToUpdate = { ...loadedUser };
+    let missionsToUpdate = [...loadedMissions];
 
-  // Effect to load data from localStorage if a session exists (e.g., on page refresh)
-  useEffect(() => {
-    const rehydrateSession = async () => {
-      setIsLoading(true);
+    // Daily Reset
+    if (!isToday(new Date(userToUpdate.lastDailyReset))) {
+      missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Harian');
+      const { missions: newDaily } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_DAILY, category: 'Harian' });
+      missionsToUpdate.push(...newDaily);
+      userToUpdate.lastDailyReset = now.toISOString();
+    }
+
+    // Weekly Reset
+    if (!isThisWeek(new Date(userToUpdate.lastWeeklyReset), { weekStartsOn: 1 })) {
+      missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Mingguan');
+      const { missions: newWeekly } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_WEEKLY, category: 'Mingguan' });
+      missionsToUpdate.push(...newWeekly);
+      userToUpdate.lastWeeklyReset = now.toISOString();
+    }
+
+    // Monthly Reset
+    if (!isThisMonth(new Date(userToUpdate.lastMonthlyReset))) {
+      missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Bulanan' || m.type === 'auto'); // Keep auto-complete missions
+      const { missions: newMonthly } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
+      missionsToUpdate.push(...newMonthly);
+      userToUpdate.lastMonthlyReset = now.toISOString();
+    }
+    
+    const currentMissionIds = new Set(missionsToUpdate.map(m => m.id));
+    const staticAutoMissionIds = new Set(staticMissions.filter(m => m.type === 'auto').map(m => m.id));
+    userToUpdate.completedMissions = userToUpdate.completedMissions.filter(id => currentMissionIds.has(id) || staticAutoMissionIds.has(id));
+
+    const finalData = { user: userToUpdate, missions: missionsToUpdate };
+    
+    setUser(finalData.user);
+    setMissions(finalData.missions);
+    localStorage.setItem('deen-daily-data', JSON.stringify(finalData));
+    
+    return finalData;
+  }, []);
+
+  const loadUserFromStorage = useCallback(async () => {
+    setIsLoading(true);
+    try {
       const storedDataRaw = localStorage.getItem('deen-daily-data');
       if (storedDataRaw) {
-        try {
-          const storedData = JSON.parse(storedDataRaw);
-          if (storedData.user) {
-            const { user: updatedUser, missions: updatedMissions } = await processUserData(storedData.user, storedData.missions || []);
-            setUser(updatedUser);
-            setMissions(updatedMissions);
-            setIsAuthenticated(true);
-          }
-        } catch (error) {
-          console.error("Gagal memuat sesi:", error);
-          localStorage.removeItem('deen-daily-data');
+        const storedData = JSON.parse(storedDataRaw);
+        if (storedData.user && storedData.missions) {
+          await processAndSetUserData(storedData.user, storedData.missions);
+          setIsAuthenticated(true);
         }
       }
-      setIsLoading(false);
-    };
-
-    if (!isAuthenticated && pathname !== '/' && pathname !== '/register') {
-      rehydrateSession();
-    } else {
+    } catch (error) {
+      console.error("Gagal memuat sesi:", error);
+      localStorage.removeItem('deen-daily-data');
+    } finally {
       setIsLoading(false);
     }
-  }, [pathname]); // Only re-run on path change when not authenticated.
+  }, [processAndSetUserData]);
 
-  // Effect for routing logic
+  useEffect(() => {
+    loadUserFromStorage();
+  }, [loadUserFromStorage]);
+
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated && (pathname === '/' || pathname === '/register')) {
@@ -148,64 +131,81 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const generateNewUserMissions = async (level: number): Promise<Mission[]> => {
       const existingIds = staticMissions.map(m => m.id);
-      
       const dailyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_DAILY, category: 'Harian' });
       const weeklyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_WEEKLY, category: 'Mingguan' });
       const monthlyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
-
       const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyPromise]);
-
       return [...staticMissions, ...dailyResult.missions, ...weeklyResult.missions, ...monthlyResult.missions];
   }
 
   const login = async (name: string) => {
     setIsLoading(true);
-    const storedDataRaw = localStorage.getItem('deen-daily-data');
-    if (storedDataRaw) {
-        try {
-            const storedData = JSON.parse(storedDataRaw);
-            if (storedData.user && storedData.user.name.toLowerCase() === name.toLowerCase()) {
-                const { user: updatedUser, missions: updatedMissions } = await processUserData(storedData.user, storedData.missions || []);
-                setUser(updatedUser);
-                setMissions(updatedMissions);
-                setIsAuthenticated(true);
-                setIsLoading(false);
-                toast({
-                  title: `Selamat Datang Kembali, ${updatedUser.name}!`,
-                  variant: 'success'
-                });
-                return; // Success
-            }
-        } catch (error) {
-            console.error("Gagal login, data rusak", error);
-        }
+    try {
+      const storedDataRaw = localStorage.getItem('deen-daily-data');
+      if (storedDataRaw) {
+          const storedData = JSON.parse(storedDataRaw);
+          if (storedData.user && storedData.user.name.toLowerCase() === name.toLowerCase()) {
+              await processAndSetUserData(storedData.user, storedData.missions);
+              setIsAuthenticated(true);
+              toast({
+                title: `Selamat Datang Kembali, ${storedData.user.name}!`,
+                variant: 'success'
+              });
+              return;
+          }
+      }
+      toast({
+          title: 'Login Gagal',
+          description: 'Pengguna tidak ditemukan. Silakan daftar atau periksa kembali nama Anda.',
+          variant: 'destructive',
+      });
+    } catch (error) {
+      console.error("Login failed:", error);
+      toast({
+          title: 'Login Gagal',
+          description: 'Terjadi kesalahan. Data mungkin rusak.',
+          variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
-    // Failure case
-    toast({
-        title: 'Login Gagal',
-        description: 'Pengguna tidak ditemukan. Silakan daftar atau periksa kembali nama Anda.',
-        variant: 'destructive',
-    });
-    setIsLoading(false);
   };
 
   const register = async (name: string) => {
     setIsLoading(true);
-    const now = new Date();
-    const newUser: User = { 
-        ...initialUser, 
-        name: name, 
-        title: getTitleForLevel(1),
-        avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
-        lastDailyReset: now.toISOString(),
-        lastWeeklyReset: now.toISOString(),
-        lastMonthlyReset: now.toISOString(),
-    };
-    const newMissions = await generateNewUserMissions(newUser.level);
-    setUser(newUser);
-    setMissions(newMissions);
-    setIsAuthenticated(true);
-    setIsLoading(false);
+    try {
+      const now = new Date();
+      const newUser: User = { 
+          ...initialUser, 
+          name: name, 
+          title: getTitleForLevel(1),
+          avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
+          lastDailyReset: now.toISOString(),
+          lastWeeklyReset: now.toISOString(),
+          lastMonthlyReset: now.toISOString(),
+      };
+      const newMissions = await generateNewUserMissions(newUser.level);
+      
+      setUser(newUser);
+      setMissions(newMissions);
+      localStorage.setItem('deen-daily-data', JSON.stringify({ user: newUser, missions: newMissions }));
+      setIsAuthenticated(true);
+
+      toast({
+        title: `Selamat Bergabung, ${name}!`,
+        description: 'Akun Anda berhasil dibuat. Selamat memulai perjalanan!',
+        variant: 'success'
+      });
+    } catch(error) {
+       console.error("Register failed:", error);
+       toast({
+          title: 'Pendaftaran Gagal',
+          description: 'Terjadi kesalahan saat membuat akun Anda. Coba lagi nanti.',
+          variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const logout = () => {
@@ -213,11 +213,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setUser(initialUser);
     setMissions([]);
     setIsAuthenticated(false);
-    // Routing effect will handle redirect
+    router.push('/');
   };
 
   const updateUser = (updatedData: Partial<User>) => {
-    setUser(currentUser => ({ ...currentUser, ...updatedData }));
+    const updatedUser = { ...user, ...updatedData };
+    setUser(updatedUser);
+    localStorage.setItem('deen-daily-data', JSON.stringify({ user: updatedUser, missions }));
     toast({
         title: 'Profil Diperbarui!',
         description: 'Informasi profil Anda telah berhasil disimpan.',
@@ -244,15 +246,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }
     const newTitle = getTitleForLevel(newLevel);
     
-    let updatedMissions = [...missions];
     let replacementMission: Mission | null = null;
-
     if (mission.category === 'Harian') {
-      const currentMissionIds = missions.map(m => m.id).filter(id => id !== missionId);
       try {
         const { missions: newMissions } = await generateMissions({
             level: newLevel,
-            existingMissionIds: currentMissionIds,
+            existingMissionIds: missions.map(m => m.id),
             count: 1,
             category: 'Harian'
         });
@@ -264,30 +263,26 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    // Batch state updates
-    setUser(currentUser => {
-        const updatedUser: User = {
-          ...currentUser,
-          xp: newXp,
-          level: newLevel,
-          xpToNextLevel: newXpToNextLevel,
-          title: newTitle,
-          completedMissions: [...currentUser.completedMissions, missionId],
-        };
+    const updatedUser: User = {
+      ...user,
+      xp: newXp,
+      level: newLevel,
+      xpToNextLevel: newXpToNextLevel,
+      title: newTitle,
+      completedMissions: [...user.completedMissions, missionId],
+    };
 
-        if (replacementMission) {
-            setMissions(currentMissions => {
-                const missionIndex = currentMissions.findIndex(m => m.id === missionId);
-                const newMissionList = [...currentMissions];
-                if (missionIndex !== -1) {
-                    newMissionList[missionIndex] = replacementMission!;
-                }
-                return newMissionList;
-            });
+    let updatedMissions = [...missions];
+    if (replacementMission) {
+        const missionIndex = missions.findIndex(m => m.id === missionId);
+        if (missionIndex !== -1) {
+            updatedMissions[missionIndex] = replacementMission;
         }
+    }
         
-        return updatedUser;
-    });
+    setUser(updatedUser);
+    setMissions(updatedMissions);
+    localStorage.setItem('deen-daily-data', JSON.stringify({ user: updatedUser, missions: updatedMissions }));
 
     if (leveledUp) {
         toast({

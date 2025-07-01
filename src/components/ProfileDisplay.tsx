@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from './ui/separator';
-import { Check, ShieldCheck, LogOut } from 'lucide-react';
+import { ShieldCheck, LogOut, Award, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { avatarPool } from '@/lib/data';
@@ -20,31 +20,31 @@ export default function ProfileDisplay() {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-lg">
-        <CardHeader className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-          <Avatar className="h-24 w-24 border-4 border-accent">
+      <Card className="overflow-hidden shadow-lg">
+        <CardHeader className="flex flex-col items-center gap-6 bg-secondary/50 p-6 text-center md:flex-row md:text-left">
+          <Avatar className="h-28 w-28 border-4 border-accent shadow-md">
             <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint={avatarHint} />
-            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+            <AvatarFallback className="text-4xl">{user.name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className='flex-1'>
-            <CardTitle className="font-headline text-3xl">{user.name}</CardTitle>
-            <div className="flex items-center justify-center gap-2 sm:justify-start">
-                <CardDescription className="text-lg">Level {user.level}</CardDescription>
-                <Badge variant="secondary">{user.title}</Badge>
+            <CardTitle className="font-headline text-4xl">{user.name}</CardTitle>
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+                <Badge variant="default" className="text-lg">Level {user.level}</Badge>
+                <Badge variant="secondary" className="gap-1.5 text-lg"><Award className="h-4 w-4"/>{user.title}</Badge>
+            </div>
+            <div className="mt-4 w-full">
+              <div className="mb-1 flex justify-between text-sm font-medium text-muted-foreground">
+                <span>Kemajuan Level</span>
+                <span>
+                  {user.xp} / {user.xpToNextLevel} XP
+                </span>
+              </div>
+              <Progress value={progressPercentage} className="h-4" />
             </div>
           </div>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Kemajuan</span>
-              <span>
-                {user.xp} / {user.xpToNextLevel} XP
-              </span>
-            </div>
-            <Progress value={progressPercentage} className="h-3 bg-accent/20 [&>div]:bg-accent" />
-          </div>
-           <Button onClick={logout} variant="outline" className="w-full mt-6">
+        <CardContent className="p-6">
+           <Button onClick={logout} variant="outline" className="w-full">
             <LogOut className="mr-2 h-4 w-4" />
             Keluar
           </Button>
@@ -54,26 +54,22 @@ export default function ProfileDisplay() {
       <Separator />
 
       <div>
-        <h2 className="font-headline text-2xl font-bold mb-4">Misi Selesai</h2>
+        <h2 className="mb-4 font-headline text-3xl font-bold">Misi Selesai</h2>
         {completedMissions.length > 0 ? (
-          <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
             {completedMissions.map((mission) => (
-              <Card key={mission.id} className="bg-card/80">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <ShieldCheck className="h-6 w-6 text-success mr-4" />
-                    <div>
-                      <p className="font-semibold">{mission.title}</p>
-                      <p className="text-sm text-muted-foreground">+{mission.xp} XP</p>
-                    </div>
-                  </div>
-                  <Check className="h-5 w-5 text-success" />
-                </CardContent>
+              <Card key={mission.id} className="flex items-center p-4 bg-card/80 shadow-sm">
+                <ShieldCheck className="h-8 w-8 flex-shrink-0 text-success mr-4" />
+                <div className="flex-grow">
+                  <p className="font-semibold">{mission.title}</p>
+                  <p className="text-sm text-muted-foreground">+{mission.xp} XP</p>
+                </div>
+                <CheckCircle className="h-6 w-6 flex-shrink-0 text-success" />
               </Card>
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground text-center py-8">
+          <p className="py-8 text-center text-muted-foreground">
             Anda belum menyelesaikan misi apa pun. Buka tab misi untuk memulai!
           </p>
         )}
