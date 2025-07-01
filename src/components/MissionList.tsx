@@ -66,7 +66,7 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
                     </Badge>
                      <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-400/20">
                       <Coins className="mr-1 h-3 w-3" />
-                      {mission.coins}
+                      {mission.coins || 0}
                     </Badge>
                     {mission.bonusXp && (
                     <Badge variant="default" className="bg-amber-500 text-white hover:bg-amber-600">
@@ -105,7 +105,7 @@ export default function MissionList() {
     await completeMission(mission.id);
     toast({
       title: 'Misi Selesai!',
-      description: `Anda mendapatkan ${mission.xp} XP dan ${mission.coins} Koin untuk menyelesaikan "${mission.title}".`,
+      description: `Anda mendapatkan ${mission.xp} XP dan ${mission.coins || 0} Koin untuk menyelesaikan "${mission.title}".`,
       variant: 'success'
     });
     setCompletingMissionId(null);

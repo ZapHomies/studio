@@ -8,6 +8,7 @@ import { UserDataProvider, UserDataContext } from '@/context/UserDataProvider';
 import BottomNav from '@/components/BottomNav';
 import React, { useContext } from 'react';
 import { ThemeProvider } from '@/context/ThemeProvider';
+import CoinDisplay from '@/components/CoinDisplay';
 
 const fontHeadline = Playfair_Display({
   subsets: ['latin'],
@@ -25,7 +26,8 @@ function AppBody({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col">
-       <main className={cn("flex-1", isAuthenticated && "pb-24")}>
+       {isAuthenticated && <CoinDisplay />}
+       <main className={cn("flex-1", isAuthenticated && "pb-24 pt-16 sm:pt-8")}>
          {children}
        </main>
        {isAuthenticated && !isLoading && <BottomNav />}
