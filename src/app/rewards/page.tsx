@@ -10,7 +10,7 @@ import { Gift, Check, Gem, CalendarClock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { themes } from '@/lib/themes';
 
-const RewardCard = ({ reward }: { reward: Reward }) => {
+const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean }) => {
     const { currentUser, redeemReward } = useContext(UserDataContext);
     const { toast } = useToast();
 
@@ -18,9 +18,22 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
 
     const isUnlocked = currentUser.unlockedRewardIds.includes(reward.id);
     const canAfford = currentUser.xp >= reward.cost;
+    const isSeasonal = reward.season === 'Ramadan';
+    const isEventActive = isRamadan;
 
     const handleRedeem = () => {
         if (isUnlocked) return;
+        
+        // This check is a safeguard, but the button should already be disabled.
+        if (isSeasonal && !isEventActive) {
+            toast({
+                variant: 'destructive',
+                title: 'Belum Tersedia',
+                description: `Hadiah ini hanya dapat ditukar selama ${reward.season}.`,
+            });
+            return;
+        }
+
         if (!canAfford) {
             toast({
                 variant: 'destructive',
@@ -31,6 +44,8 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
         }
         redeemReward(reward.id);
     };
+
+    const isButtonDisabled = isUnlocked || (isSeasonal && !isEventActive);
     
     const getRewardPreview = () => {
         if (reward.type === 'theme') {
@@ -76,33 +91,47 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
     }
 
   return (
-    <Card className={cn("flex flex-col transition-all", isUnlocked && "bg-success/5 border-success/20")}>
+    <Card className={cn(
+        "flex flex-col transition-all", 
+        isUnlocked && "bg-success/5 border-success/20",
+        isSeasonal && !isEventActive && "opacity-70 bg-muted/30"
+    )}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-headline text-xl">
             {reward.name}
              {reward.season === 'Ramadan' && <CalendarClock className="h-4 w-4 text-amber-600" />}
         </CardTitle>
-        <CardDescription>{reward.description}</CardDescription>
+        <CardDescription>
+            {reward.description}
+            {isSeasonal && !isEventActive && (
+                <span className="mt-1 block text-xs font-bold text-amber-700">Tersedia saat Ramadan.</span>
+            )}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
         {getRewardPreview()}
       </CardContent>
       <CardFooter className="flex-col gap-2">
-        <Button onClick={handleRedeem} disabled={isUnlocked} className="w-full">
-          {isUnlocked ? (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              Telah Dimiliki
-            </>
-          ) : reward.cost > 0 ? (
-            <>
-              Tukar ({reward.cost.toLocaleString()} XP)
-            </>
-          ) : (
-            <>
-                Klaim Gratis
-            </>
-          )}
+        <Button onClick={handleRedeem} disabled={isButtonDisabled} className="w-full">
+            {isUnlocked ? (
+                <>
+                <Check className="mr-2 h-4 w-4" />
+                Telah Dimiliki
+                </>
+            ) : isSeasonal && !isEventActive ? (
+                <>
+                    <CalendarClock className="mr-2 h-4 w-4" />
+                    Tersedia saat Ramadan
+                </>
+            ) : reward.cost > 0 ? (
+                <>
+                Tukar ({reward.cost.toLocaleString()} XP)
+                </>
+            ) : (
+                <>
+                    Klaim Gratis
+                </>
+            )}
         </Button>
       </CardFooter>
     </Card>
@@ -112,21 +141,15 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
 export default function RewardsPage() {
     const { currentUser } = useContext(UserDataContext);
 
-    const { themeRewards, borderRewards } = useMemo(() => {
+    const { themeRewards, borderRewards, isRamadan } = useMemo(() => {
         const now = new Date();
         // Di aplikasi nyata, gunakan library kalender Islam yang tepat. Untuk prototipe ini, kita asumsikan Ramadan jatuh pada bulan Maret.
-        const isRamadan = now.getMonth() + 1 === 3;
-
-        const availableRewards = rewards.filter(reward => {
-            if (reward.season === 'Ramadan') {
-                return isRamadan;
-            }
-            return true;
-        });
+        const ramadanIsActive = now.getMonth() + 1 === 3;
 
         return {
-            themeRewards: availableRewards.filter(r => r.type === 'theme'),
-            borderRewards: availableRewards.filter(r => r.type === 'border'),
+            themeRewards: rewards.filter(r => r.type === 'theme'),
+            borderRewards: rewards.filter(r => r.type === 'border'),
+            isRamadan: ramadanIsActive,
         };
     }, []);
 
@@ -149,7 +172,7 @@ export default function RewardsPage() {
                 <h2 className="font-headline text-3xl text-primary">Tema Aplikasi</h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {themeRewards.map(reward => (
-                        <RewardCard key={reward.id} reward={reward} />
+                        <RewardCard key={reward.id} reward={reward} isRamadan={isRamadan} />
                     ))}
                 </div>
             </section>
@@ -158,7 +181,7 @@ export default function RewardsPage() {
                 <h2 className="font-headline text-3xl text-primary">Bingkai Profil</h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                      {borderRewards.map(reward => (
-                        <RewardCard key={reward.id} reward={reward} />
+                        <RewardCard key={reward.id} reward={reward} isRamadan={isRamadan} />
                     ))}
                 </div>
             </section>
