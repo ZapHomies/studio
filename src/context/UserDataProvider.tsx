@@ -6,7 +6,7 @@ import { type User, type Mission } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { initialUser, staticMissions, avatarPool } from '@/lib/data';
 import { useRouter, usePathname } from 'next/navigation';
-import { isToday, isThisWeek, isThisMonth, startOfWeek } from 'date-fns';
+import { isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { generateMissions } from '@/ai/flows/generate-missions';
 
 interface UserDataContextType {
@@ -54,10 +54,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Effect to persist state to localStorage whenever it changes
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      localStorage.setItem('deen-daily-data', JSON.stringify({ user, missions }));
+    }
+  }, [user, missions, isLoading, isAuthenticated]);
+  
   const saveData = useCallback((userToSave: User, missionsToSave: Mission[]) => {
       setUser(userToSave);
       setMissions(missionsToSave);
-      localStorage.setItem('deen-daily-data', JSON.stringify({ user: userToSave, missions: missionsToSave }));
   }, []);
 
   useEffect(() => {
@@ -85,8 +91,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             const now = new Date();
             let userToUpdate = { ...loadedUser };
             let missionsToUpdate = [...loadedMissions];
-            let missionsChanged = false;
-
+            
             const existingMissionIds = missionsToUpdate.map(m => m.id);
 
             // Daily Reset
@@ -97,7 +102,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
                 const { missions: newDaily } = await generateMissions({ level: userToUpdate.level, existingMissionIds, count: NUM_DAILY, category: 'Harian'});
                 missionsToUpdate.push(...newDaily);
                 userToUpdate.lastDailyReset = now.toISOString();
-                missionsChanged = true;
             }
 
             // Weekly Reset
@@ -108,7 +112,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
                 const { missions: newWeekly } = await generateMissions({ level: userToUpdate.level, existingMissionIds, count: NUM_WEEKLY, category: 'Mingguan'});
                 missionsToUpdate.push(...newWeekly);
                 userToUpdate.lastWeeklyReset = now.toISOString();
-                missionsChanged = true;
             }
 
             // Monthly Reset
@@ -119,14 +122,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
                 const { missions: newMonthly } = await generateMissions({ level: userToUpdate.level, existingMissionIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan'});
                 missionsToUpdate.push(...newMonthly);
                 userToUpdate.lastMonthlyReset = now.toISOString();
-                missionsChanged = true;
             }
             
             setUser(userToUpdate);
             setMissions(missionsToUpdate);
-            if(missionsChanged) {
-                saveData(userToUpdate, missionsToUpdate);
-            }
         }
         setIsLoading(false);
     };
@@ -204,15 +203,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateUser = (updatedData: Partial<User>) => {
-    setUser(currentUser => {
-        const updatedUser = { ...currentUser, ...updatedData };
-        saveData(updatedUser, missions);
-        toast({
-            title: 'Profil Diperbarui!',
-            description: 'Informasi profil Anda telah berhasil disimpan.',
-            variant: 'success'
-        });
-        return updatedUser;
+    setUser(currentUser => ({ ...currentUser, ...updatedData }));
+    toast({
+        title: 'Profil Diperbarui!',
+        description: 'Informasi profil Anda telah berhasil disimpan.',
+        variant: 'success'
     });
   };
 
@@ -220,10 +215,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const mission = missions.find((m) => m.id === missionId);
     if (!mission || user.completedMissions.includes(missionId)) return;
 
-    // 1. Calculate new user state first
+    // --- Part 1: Calculate new state ahead of time ---
     const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
     const totalXpGained = xpFromMission + bonusXp;
-
     let leveledUp = false;
     let newXp = user.xp + totalXpGained;
     let newLevel = user.level;
@@ -235,7 +229,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       newLevel += 1;
       newXpToNextLevel = newLevel * 150;
     }
-
     const newTitle = getTitleForLevel(newLevel);
     
     const updatedUser: User = {
@@ -249,34 +242,37 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     let updatedMissions = [...missions];
 
-    // 2. If it's a daily mission, fetch a replacement
+    // --- Part 2: Fetch replacement mission if needed ---
     if (mission.category === 'Harian') {
-      const currentMissionIds = updatedMissions.map(m => m.id).filter(id => id !== missionId);
-      
-      const { missions: newMissions } = await generateMissions({
-          level: updatedUser.level,
-          existingMissionIds: currentMissionIds,
-          count: 1,
-          category: 'Harian'
-      });
-      
-      // 3. Replace the completed mission in the list
-      if (newMissions && newMissions.length > 0) {
-          const missionIndex = updatedMissions.findIndex(m => m.id === missionId);
-          if (missionIndex !== -1) {
-              updatedMissions[missionIndex] = newMissions[0];
-          }
+      const currentMissionIds = missions.map(m => m.id).filter(id => id !== missionId);
+      try {
+        const { missions: newMissions } = await generateMissions({
+            level: updatedUser.level,
+            existingMissionIds: currentMissionIds,
+            count: 1,
+            category: 'Harian'
+        });
+        
+        if (newMissions && newMissions.length > 0) {
+            const missionIndex = updatedMissions.findIndex(m => m.id === missionId);
+            if (missionIndex !== -1) {
+                updatedMissions[missionIndex] = newMissions[0];
+            }
+        }
+      } catch (error) {
+        console.error("Gagal membuat misi pengganti:", error);
       }
     }
     
-    // 4. Save both user and missions state together
-    saveData(updatedUser, updatedMissions);
+    // --- Part 3: Set all state together ---
+    setUser(updatedUser);
+    setMissions(updatedMissions);
 
-    // 5. Show level up toast if needed
+    // --- Part 4: Show level up toast if needed ---
     if (leveledUp) {
         toast({
             title: 'Naik Level!',
-            description: `Selamat! Anda telah mencapai Level ${updatedUser.level} dan meraih gelar "${newTitle}".`,
+            description: `Selamat! Anda telah mencapai Level ${newLevel} dan meraih gelar "${newTitle}".`,
             variant: 'success',
         });
     }
