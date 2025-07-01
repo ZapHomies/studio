@@ -1,5 +1,3 @@
-'use server';
-
 export interface Ayah {
   id: number;
   text: string;
