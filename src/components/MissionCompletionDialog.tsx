@@ -39,7 +39,7 @@ export default function MissionCompletionDialog({
   const [verificationFeedback, setVerificationFeedback] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { completeMission } = useContext(UserDataProvider);
+  const { completeMission } = useContext(UserDataContext);
 
   const resetState = () => {
     setFile(null);
