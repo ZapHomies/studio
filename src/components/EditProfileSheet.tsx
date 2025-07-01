@@ -154,12 +154,23 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
                   className="relative cursor-pointer aspect-square"
                   onClick={() => setSelectedBorderId(border.id)}
                 >
-                    <div className={cn(
-                        'flex h-full w-full items-center justify-center rounded-full border-4 bg-muted',
-                        selectedBorderId === border.id ? 'border-primary' : border.value
-                    )}>
-                        <Gem className={cn("h-8 w-8", border.value.replace('border-','text-'))} />
-                    </div>
+                    {border.style === 'gradient' ? (
+                        <div className={cn(
+                            'h-full w-full rounded-full p-1',
+                            selectedBorderId === border.id ? 'bg-primary' : border.value
+                        )}>
+                            <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
+                                <Gem className="h-8 w-8 opacity-50" />
+                            </div>
+                        </div>
+                    ) : (
+                         <div className={cn(
+                            'flex h-full w-full items-center justify-center rounded-full border-4 bg-muted',
+                            selectedBorderId === border.id ? 'border-primary' : border.value
+                        )}>
+                           <Gem className={cn("h-8 w-8", (border.value || '').replace('border-','text-'))} />
+                        </div>
+                    )}
                    <p className="mt-1 text-center text-xs font-medium">{border.name}</p>
                    {selectedBorderId === border.id && (
                     <div className="absolute bottom-6 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background">

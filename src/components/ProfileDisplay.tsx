@@ -21,18 +21,32 @@ export default function ProfileDisplay() {
   const progressPercentage = (currentUser.xp / currentUser.xpToNextLevel) * 100;
   const completedMissions = missions.filter(m => currentUser.completedMissions.includes(m.id));
 
-  const activeBorder = rewards.find(r => r.id === currentUser.activeBorderId);
-  const borderClass = activeBorder ? activeBorder.value : 'border-accent';
+  const activeBorder = rewards.find(r => r.type === 'border' && r.id === currentUser.activeBorderId);
+  
+  const AvatarContent = () => (
+    <>
+      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+      <AvatarFallback className="text-5xl">{currentUser.name.charAt(0)}</AvatarFallback>
+    </>
+  );
 
   return (
     <div className="space-y-8">
       <Card className="overflow-hidden border-2 border-primary/20 shadow-lg">
         <div className="bg-gradient-to-br from-primary/10 to-card p-6 sm:p-8">
           <div className="flex flex-col items-center gap-6 text-center">
-            <Avatar className={cn("h-28 w-28 border-4 shadow-xl sm:h-32 sm:w-32", borderClass)}>
-              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-              <AvatarFallback className="text-5xl">{currentUser.name.charAt(0)}</AvatarFallback>
-            </Avatar>
+             {activeBorder?.style === 'gradient' ? (
+                <div className={cn("rounded-full p-1 shadow-xl", activeBorder.value)}>
+                    <Avatar className="h-28 w-28 sm:h-32 sm:w-32">
+                      <AvatarContent />
+                    </Avatar>
+                </div>
+             ) : (
+                <Avatar className={cn("h-28 w-28 border-4 shadow-xl sm:h-32 sm:w-32", activeBorder ? activeBorder.value : 'border-accent')}>
+                  <AvatarContent />
+                </Avatar>
+             )}
+
             <div className="flex-1">
               <CardTitle className="font-headline text-4xl text-primary sm:text-5xl">{currentUser.name}</CardTitle>
               <div className="mt-2 flex flex-wrap items-center justify-center gap-2">

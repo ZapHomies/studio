@@ -21,6 +21,7 @@ export const staticMissions: Mission[] = [
 ];
 
 export const rewards: Reward[] = [
+  // THEMES
   {
     id: 'theme-sunset',
     name: 'Tema Senja',
@@ -45,12 +46,14 @@ export const rewards: Reward[] = [
     type: 'theme',
     value: 'Emerald',
   },
+  // SOLID BORDERS
   {
     id: 'border-silver',
     name: 'Bingkai Perak',
     description: 'Bingkai perak berkilau untuk avatar Anda.',
     cost: 250,
     type: 'border',
+    style: 'solid',
     value: 'border-slate-400',
   },
   {
@@ -59,6 +62,7 @@ export const rewards: Reward[] = [
     description: 'Tunjukkan pencapaian Anda dengan bingkai emas.',
     cost: 500,
     type: 'border',
+    style: 'solid',
     value: 'border-amber-400',
   },
   {
@@ -67,6 +71,7 @@ export const rewards: Reward[] = [
     description: 'Bingkai ungu misterius dan menawan.',
     cost: 750,
     type: 'border',
+    style: 'solid',
     value: 'border-fuchsia-600',
   },
   {
@@ -75,6 +80,44 @@ export const rewards: Reward[] = [
     description: 'Bingkai merah delima yang gagah berani.',
     cost: 1000,
     type: 'border',
+    style: 'solid',
     value: 'border-red-600',
   },
+  // GRADIENT BORDERS
+  {
+    id: 'border-ramadan',
+    name: 'Lentera Ramadan',
+    description: 'Gradasi senja Ramadan yang hangat dan spiritual.',
+    cost: 1500,
+    type: 'border',
+    style: 'gradient',
+    value: 'bg-gradient-to-tr from-amber-400 via-fuchsia-600 to-indigo-700',
+  },
+  {
+    id: 'border-rose',
+    name: 'Taman Mawar',
+    description: 'Lilitan mawar yang indah untuk profil Anda.',
+    cost: 1250,
+    type: 'border',
+    style: 'gradient',
+    value: 'bg-gradient-to-bl from-emerald-600 to-rose-500',
+  },
+  {
+    id: 'border-ocean',
+    name: 'Mutiara Samudra',
+    description: 'Gradasi warna lautan yang sejuk dan menenangkan.',
+    cost: 800,
+    type: 'border',
+    style: 'gradient',
+    value: 'bg-gradient-to-r from-cyan-400 to-sky-600',
+  },
+  {
+    id: 'border-sunrise',
+    name: 'Mentari Subuh',
+    description: 'Gradasi warna fajar yang cerah dan penuh harapan.',
+    cost: 900,
+    type: 'border',
+    style: 'gradient',
+    value: 'bg-gradient-to-t from-orange-400 to-rose-400',
+  }
 ];

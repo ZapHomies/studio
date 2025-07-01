@@ -52,6 +52,18 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
             )
         }
         if (reward.type === 'border') {
+            if (reward.style === 'gradient') {
+                 return (
+                    <div className="flex h-20 w-full items-center justify-center">
+                        <div className={cn("flex h-16 w-16 items-center justify-center rounded-full p-1", reward.value)}>
+                            <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
+                                <Gem className="h-8 w-8 text-muted-foreground"/>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+            // Fallback for solid borders
             return (
                 <div className="flex h-20 w-full items-center justify-center">
                     <div className={cn("flex h-16 w-16 items-center justify-center rounded-full bg-muted border-4", reward.value)}>
