@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useContext, useMemo } from 'react';
@@ -55,7 +54,7 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
         if (reward.type === 'border') {
             return (
                 <div className="flex h-20 w-full items-center justify-center">
-                    <div className={cn("flex h-16 w-16 items-center justify-center rounded-full bg-muted", reward.value.replace('border-','border-4 '))}>
+                    <div className={cn("flex h-16 w-16 items-center justify-center rounded-full bg-muted border-4", reward.value)}>
                        <Gem className="h-8 w-8 text-muted-foreground"/>
                     </div>
                 </div>
