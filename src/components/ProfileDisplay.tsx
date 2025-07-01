@@ -1,18 +1,19 @@
 'use client';
 
 import { useContext } from 'react';
+import Link from 'next/link';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { LogOut, Award, CheckCircle, BarChart2 } from 'lucide-react';
+import { Gift, Award, CheckCircle, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { rewards } from '@/lib/data';
 
 export default function ProfileDisplay() {
-  const { currentUser, missions, logout } = useContext(UserDataContext);
+  const { currentUser, missions } = useContext(UserDataContext);
   
   if (!currentUser) {
     return null; // Atau skeleton loader
@@ -82,10 +83,12 @@ export default function ProfileDisplay() {
                 </Card>
             </div>
 
-           <Button onClick={logout} variant="outline" className="h-12 w-full text-base sm:text-lg">
-            <LogOut className="mr-2 h-5 w-5" />
-            Keluar
-          </Button>
+            <Button asChild className="h-12 w-full text-base sm:text-lg">
+                <Link href="/rewards">
+                    <Gift className="mr-2 h-5 w-5" />
+                    Toko Hadiah
+                </Link>
+            </Button>
         </CardContent>
       </Card>
     </div>

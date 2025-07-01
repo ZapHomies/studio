@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import ProfileDisplay from '@/components/ProfileDisplay';
 import EditProfileSheet from '@/components/EditProfileSheet';
 import { Button } from '@/components/ui/button';
-import { Edit, Palette } from 'lucide-react';
+import { Edit, Palette, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
+import { UserDataContext } from '@/context/UserDataProvider';
 
 export default function ProfilePage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const { logout } = useContext(UserDataContext);
 
   return (
     <div className="container mx-auto max-w-4xl space-y-8 px-4 py-8">
@@ -38,6 +40,11 @@ export default function ProfilePage() {
       </Card>
       
       <EditProfileSheet isOpen={isSheetOpen} onOpenChange={setIsSheetOpen} />
+
+      <Button onClick={logout} variant="outline" className="h-12 w-full text-base sm:text-lg">
+        <LogOut className="mr-2 h-5 w-5" />
+        Keluar
+      </Button>
     </div>
   );
 }
