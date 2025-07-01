@@ -1,51 +1,42 @@
 'use client';
 
-import { useState, useRef, useEffect, useContext } from 'react';
+import { useState, useRef, useContext } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { provideRecitationFeedback } from '@/ai/flows/provide-recitation-feedback';
-import { Mic, Square, Loader2, BookOpen } from 'lucide-react';
+import { Mic, Square, Loader2, BookOpen, Sparkles } from 'lucide-react';
 import { UserDataContext } from '@/context/UserDataProvider';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
-type RecordingStatus = 'idle' | 'recording' | 'processing' | 'finished';
+type RecordingStatus = 'idle' | 'recording' | 'processing';
 
 export default function RecitationTool() {
   const [status, setStatus] = useState<RecordingStatus>('idle');
   const [feedback, setFeedback] = useState<string>('');
-  const [timer, setTimer] = useState(0);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
   const { currentUser, missions, completeMission } = useContext(UserDataContext);
 
-  useEffect(() => {
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, []);
-
   const startRecording = async () => {
     setStatus('recording');
     setFeedback('');
-    setTimer(0);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current.ondataavailable = (event) => {
-        chunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+            chunksRef.current.push(event.data);
+        }
       };
       mediaRecorderRef.current.onstop = handleStop;
       mediaRecorderRef.current.start();
-      timerIntervalRef.current = setInterval(() => {
-        setTimer(prev => prev + 1);
-      }, 1000);
     } catch (err) {
+      console.error("Microphone access error:", err);
       toast({
         title: 'Izin Ditolak',
         description: 'Akses mikrofon diperlukan untuk merekam bacaan.',
@@ -58,14 +49,18 @@ export default function RecitationTool() {
   const stopRecording = () => {
     if (mediaRecorderRef.current && status === 'recording') {
       mediaRecorderRef.current.stop();
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
       setStatus('processing');
     }
   };
 
   const handleStop = async () => {
+    if (chunksRef.current.length === 0) {
+        console.error("No audio data recorded.");
+        toast({ title: "Rekaman Gagal", description: "Tidak ada data audio yang terekam. Mohon coba lagi.", variant: 'destructive' });
+        setStatus('idle');
+        return;
+    }
+
     const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
     chunksRef.current = [];
 
@@ -76,11 +71,14 @@ export default function RecitationTool() {
       try {
         const result = await provideRecitationFeedback({ audioDataUri });
         setFeedback(result.feedback);
+        setIsSheetOpen(true);
         
+        // Auto-complete mission logic
         if (currentUser) {
             const quranMission = missions.find(m => m.id === 'monthly-quran-recite');
             if (quranMission && !currentUser.completedMissions.includes(quranMission.id)) {
-                const xpGained = Math.min(200, 10 + (timer * 2));
+                // Simplified XP calculation
+                const xpGained = Math.min(200, 50); 
                 await completeMission(quranMission.id, 0, xpGained);
                 toast({
                     title: "Misi Otomatis Selesai!",
@@ -97,65 +95,63 @@ export default function RecitationTool() {
         });
         setFeedback('Terjadi kesalahan. Silakan coba lagi.');
       } finally {
-        setStatus('finished');
+        setStatus('idle');
       }
+    };
+     reader.onerror = (error) => {
+        console.error("File reader error:", error);
+        toast({ title: 'Gagal Membaca Rekaman', variant: 'destructive' });
+        setStatus('idle');
     };
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getButton = () => {
-    switch (status) {
-      case 'recording':
-        return (
-          <Button onClick={stopRecording} size="lg" variant="destructive" className="w-full">
-            <Square className="mr-2 h-5 w-5" />
-            Hentikan Rekaman ({formatTime(timer)})
-          </Button>
-        );
-      case 'processing':
-        return (
-          <Button disabled size="lg" className="w-full">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Memproses...
-          </Button>
-        );
-      default:
-        return (
-          <Button onClick={startRecording} size="lg" className="w-full">
-            <Mic className="mr-2 h-5 w-5" />
-            Mulai Merekam
-          </Button>
-        );
+  const handleButtonClick = () => {
+    if (status === 'idle') {
+      startRecording();
+    } else if (status === 'recording') {
+      stopRecording();
     }
   };
 
   return (
-    <Card className="shadow-lg">
-      <CardContent className="flex flex-col items-center gap-6 p-6">
-        {getButton()}
-        
-        {feedback && (
-          <div className="w-full space-y-2 rounded-lg border bg-background/50 p-4">
-            <h3 className="flex items-center gap-2 font-headline text-lg font-semibold">
-              <BookOpen className="h-5 w-5"/>
-              Umpan Balik Bacaan
-            </h3>
-            <p className="whitespace-pre-wrap text-foreground">{feedback}</p>
-          </div>
-        )}
+    <>
+        <div className="fixed bottom-20 right-4 z-50 md:bottom-8 md:right-8">
+            <Button 
+                onClick={handleButtonClick} 
+                disabled={status === 'processing'}
+                size="icon" 
+                className="h-16 w-16 rounded-full shadow-lg"
+                aria-label={status === 'recording' ? 'Hentikan Rekaman' : 'Mulai Merekam'}
+                variant={status === 'recording' ? 'destructive' : 'default'}
+            >
+            {status === 'idle' && <Mic className="h-8 w-8" />}
+            {status === 'recording' && <Square className="h-8 w-8" />}
+            {status === 'processing' && <Loader2 className="h-8 w-8 animate-spin" />}
+            </Button>
+        </div>
 
-        {status === 'idle' && !feedback && (
-            <div className="p-8 text-center text-muted-foreground">
-                <p>Tekan "Mulai Merekam" untuk memulai bacaan Anda.</p>
-                <p className="mt-2 text-sm">Bacalah sebuah ayat dari Al-Quran dan dapatkan umpan balik tentang Tajwid Anda.</p>
-            </div>
-        )}
-      </CardContent>
-    </Card>
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetContent>
+                <SheetHeader>
+                <SheetTitle className="flex items-center gap-2 font-headline text-2xl">
+                    <Sparkles className="text-primary"/>
+                    Umpan Balik AI
+                </SheetTitle>
+                <SheetDescription>
+                    Berikut adalah hasil analisis dari ahli Tajwid AI kami mengenai bacaan Anda.
+                </SheetDescription>
+                </SheetHeader>
+                <div className="py-4">
+                    <div className="w-full space-y-2 rounded-lg border bg-background/50 p-4">
+                        <h3 className="flex items-center gap-2 font-headline text-lg font-semibold">
+                            <BookOpen className="h-5 w-5"/>
+                            Umpan Balik Bacaan
+                        </h3>
+                        <p className="whitespace-pre-wrap text-foreground">{feedback}</p>
+                    </div>
+                </div>
+            </SheetContent>
+        </Sheet>
+    </>
   );
 }
