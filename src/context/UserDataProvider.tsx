@@ -150,32 +150,44 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const rehydrateSession = useCallback(async () => {
-    const { users, missions: storedMissions } = loadDataFromStorage();
-    const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) : null;
+    setIsLoading(true);
+    try {
+        const { users, missions: storedMissions } = loadDataFromStorage();
+        const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) : null;
 
-    if (sessionId && users.length > 0) {
-      const userFromSession = users.find(u => u.id === sessionId);
-      if (userFromSession) {
-        try {
-          const { updatedUser, updatedMissions } = await processUserSession(userFromSession, storedMissions, users);
-          setAllUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-          setCurrentUser(updatedUser);
-          setMissions(updatedMissions);
-        } catch (error) {
-          console.error("Gagal memproses sesi pengguna, memuat ulang tanpa pembaruan misi:", error);
-          toast({ variant: 'destructive', title: 'Gagal Menyinkronkan Misi', description: 'Memuat data misi yang tersimpan.'});
-          setCurrentUser(userFromSession);
-          setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
+        if (sessionId && users.length > 0) {
+            const userFromSession = users.find(u => u.id === sessionId);
+            if (userFromSession) {
+                const { updatedUser, updatedMissions } = await processUserSession(userFromSession, storedMissions, users);
+                setAllUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+                setCurrentUser(updatedUser);
+                setMissions(updatedMissions);
+            } else {
+                sessionStorage.removeItem(SESSION_KEY);
+                setAllUsers(users);
+                setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
+            }
+        } else {
+            setAllUsers(users);
+            setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
         }
-      } else {
-        sessionStorage.removeItem(SESSION_KEY);
-      }
-    } else {
-       setAllUsers(users);
-       setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
+    } catch (error) {
+        console.error("Gagal memulihkan sesi:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Memuat Data',
+            description: 'Terjadi masalah saat memuat data sesi. Coba muat ulang halaman.',
+        });
+        // Reset ke state aman jika terjadi kesalahan kritis
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem(SESSION_KEY);
+        }
+        setCurrentUser(null);
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [loadDataFromStorage, processUserSession, toast]);
+}, [loadDataFromStorage, processUserSession, toast]);
+
 
   useEffect(() => {
     rehydrateSession();
@@ -220,8 +232,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             lastWeeklyReset: now.toISOString(),
             lastMonthlyReset: now.toISOString(),
             hasSeenWelcome: false,
-            unlockedRewardIds: [],
-            activeBorderId: null,
+            unlockedRewardIds: ['border-welcome'], // Hadiah gratis untuk pengguna baru
+            activeBorderId: 'border-welcome', // Langsung aktifkan border gratis
         };
 
         const newMissions = await generateNewUserMissions(1);
@@ -236,7 +248,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             localStorage.setItem(USERS_DB_KEY, JSON.stringify({ users: newUsers, missions: newMissions }));
         }
         
-        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat.', variant: 'success' });
+        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
     } catch(error) {
        console.error("Register failed:", error);
        toast({ title: 'Pendaftaran Gagal', description: 'Terjadi kesalahan saat membuat akun.', variant: 'destructive' });
@@ -251,22 +263,24 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const userToLogin = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (userToLogin && userToLogin.password === password) {
-      try {
-        const { updatedUser, updatedMissions } = await processUserSession(userToLogin, storedMissions, users);
-        
-        const updatedUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
-        setAllUsers(updatedUsers);
-        setCurrentUser(updatedUser);
-        setMissions(updatedMissions);
-        
-        if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, updatedUser.id);
-        toast({ title: `Selamat Datang Kembali, ${userToLogin.name}!`, variant: 'success' });
-      } catch (error) {
-        console.error("Gagal memproses sesi login, memuat ulang tanpa pembaruan misi:", error);
-        toast({ variant: 'destructive', title: 'Gagal Menyinkronkan Misi', description: 'Memuat data yang ada.'});
-        setCurrentUser(userToLogin);
-        setMissions(storedMissions);
-      }
+        try {
+            const { updatedUser, updatedMissions } = await processUserSession(userToLogin, storedMissions, users);
+            
+            const updatedUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
+            setAllUsers(updatedUsers);
+            setCurrentUser(updatedUser);
+            setMissions(updatedMissions);
+            
+            if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, updatedUser.id);
+            toast({ title: `Selamat Datang Kembali, ${userToLogin.name}!`, variant: 'success' });
+        } catch (error) {
+            console.error("Gagal memproses sesi login:", error);
+            toast({ variant: 'destructive', title: 'Gagal Menyinkronkan', description: 'Memuat data lokal yang ada.'});
+            // Fallback ke data yang ada jika proses sesi gagal
+            setCurrentUser(userToLogin);
+            setMissions(storedMissions);
+             if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, userToLogin.id);
+        }
     } else {
       toast({ title: 'Login Gagal', description: 'Email atau password salah.', variant: 'destructive' });
     }
@@ -304,6 +318,20 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         toast({ title: 'Hadiah Tidak Ditemukan', variant: 'destructive' });
         return;
     }
+     // Logika untuk hadiah musiman
+    if (reward.season === 'Ramadan') {
+        const now = new Date();
+        // Untuk prototipe, kita asumsikan Ramadan jatuh pada bulan Maret (bulan ke-3).
+        if (now.getMonth() + 1 !== 3) { 
+            toast({
+                title: 'Hadiah Musiman',
+                description: 'Hadiah ini hanya bisa ditukar selama bulan Ramadan.',
+                variant: 'destructive',
+            });
+            return;
+        }
+    }
+
     if (currentUser.xp < reward.cost) {
         toast({ title: 'XP Tidak Cukup', variant: 'destructive' });
         return;

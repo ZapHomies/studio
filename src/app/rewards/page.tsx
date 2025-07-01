@@ -6,7 +6,7 @@ import { rewards, type Reward } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Gift, Check, Gem } from 'lucide-react';
+import { Gift, Check, Gem, CalendarClock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { themes } from '@/lib/themes';
 
@@ -80,6 +80,7 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-headline text-xl">
             {reward.name}
+             {reward.season === 'Ramadan' && <CalendarClock className="h-4 w-4 text-amber-600" />}
         </CardTitle>
         <CardDescription>{reward.description}</CardDescription>
       </CardHeader>
@@ -93,9 +94,13 @@ const RewardCard = ({ reward }: { reward: Reward }) => {
               <Check className="mr-2 h-4 w-4" />
               Telah Dimiliki
             </>
-          ) : (
+          ) : reward.cost > 0 ? (
             <>
               Tukar ({reward.cost.toLocaleString()} XP)
+            </>
+          ) : (
+            <>
+                Klaim Gratis
             </>
           )}
         </Button>
@@ -108,9 +113,20 @@ export default function RewardsPage() {
     const { currentUser } = useContext(UserDataContext);
 
     const { themeRewards, borderRewards } = useMemo(() => {
+        const now = new Date();
+        // Di aplikasi nyata, gunakan library kalender Islam yang tepat. Untuk prototipe ini, kita asumsikan Ramadan jatuh pada bulan Maret.
+        const isRamadan = now.getMonth() + 1 === 3;
+
+        const availableRewards = rewards.filter(reward => {
+            if (reward.season === 'Ramadan') {
+                return isRamadan;
+            }
+            return true;
+        });
+
         return {
-            themeRewards: rewards.filter(r => r.type === 'theme'),
-            borderRewards: rewards.filter(r => r.type === 'border'),
+            themeRewards: availableRewards.filter(r => r.type === 'theme'),
+            borderRewards: availableRewards.filter(r => r.type === 'border'),
         };
     }, []);
 

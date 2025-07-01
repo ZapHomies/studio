@@ -38,4 +38,5 @@ export interface Reward {
   type: 'theme' | 'border';
   value: string; // Nama tema atau kelas CSS untuk border
   style?: 'solid' | 'gradient'; // Menambahkan style untuk membedakan tipe border
+  season?: 'Ramadan';
 }
