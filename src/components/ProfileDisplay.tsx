@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext } from 'react';
+import { useContext, useMemo } from 'react';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +15,15 @@ interface ProfileDisplayProps {
   onOpenRewards: () => void;
 }
 
+const getTotalXpForLevel = (level: number): number => {
+    if (level <= 1) return 0;
+    let totalXp = 0;
+    for (let i = 2; i <= level; i++) {
+        totalXp += (i - 1) * 150;
+    }
+    return totalXp;
+};
+
 export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
   const { currentUser, missions } = useContext(UserDataContext);
   
@@ -22,10 +31,17 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
     return null; // Atau skeleton loader
   }
 
-  const progressPercentage = (currentUser.xp / currentUser.xpToNextLevel) * 100;
   const completedMissions = missions.filter(m => currentUser.completedMissions.includes(m.id));
 
   const activeBorder = rewards.find(r => r.type === 'border' && r.id === currentUser.activeBorderId);
+
+  const xpForCurrentLevelStart = useMemo(() => getTotalXpForLevel(currentUser.level), [currentUser.level]);
+  const xpForNextLevelStart = currentUser.xpToNextLevel;
+
+  const totalXpForThisLevel = xpForNextLevelStart - xpForCurrentLevelStart;
+  const xpEarnedThisLevel = currentUser.xp - xpForCurrentLevelStart;
+  
+  const progressPercentage = totalXpForThisLevel > 0 ? (xpEarnedThisLevel / totalXpForThisLevel) * 100 : 0;
   
   const AvatarContent = () => (
     <>
@@ -65,7 +81,7 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
               <div className="mb-2 flex justify-between text-md font-medium text-muted-foreground">
                 <span>Kemajuan Level</span>
                 <span>
-                  {currentUser.xp.toLocaleString()} / {currentUser.xpToNextLevel.toLocaleString()} XP
+                  {xpEarnedThisLevel.toLocaleString()} / {totalXpForThisLevel.toLocaleString()} XP
                 </span>
               </div>
               <Progress value={progressPercentage} className="h-4" />

@@ -31,6 +31,29 @@ const NUM_DAILY = 4;
 const NUM_WEEKLY = 2;
 const NUM_MONTHLY = 2;
 
+const getTotalXpForLevel = (level: number): number => {
+    if (level <= 1) return 0;
+    // The cost to get from level (i-1) to i is (i-1) * 150
+    let totalXp = 0;
+    for (let i = 2; i <= level; i++) {
+        totalXp += (i - 1) * 150;
+    }
+    return totalXp;
+};
+
+const getLevelForXp = (xp: number): number => {
+    let level = 1;
+    while (true) {
+        // Check against the XP required for the *next* level
+        if (xp < getTotalXpForLevel(level + 1)) {
+            return level;
+        }
+        level++;
+        // Safety break to prevent infinite loops in unforeseen circumstances
+        if (level > 1000) return 1000;
+    }
+};
+
 export const UserDataContext = createContext<UserDataContextType>({
   currentUser: null,
   missions: [],
@@ -178,7 +201,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             title: 'Gagal Memuat Data',
             description: 'Terjadi masalah saat memuat data sesi. Coba muat ulang halaman.',
         });
-        // Reset ke state aman jika terjadi kesalahan kritis
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem(SESSION_KEY);
         }
@@ -225,15 +247,15 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
             level: 1,
             xp: 0,
-            xpToNextLevel: 150,
+            xpToNextLevel: getTotalXpForLevel(2),
             title: getTitleForLevel(1),
             completedMissions: [],
             lastDailyReset: now.toISOString(),
             lastWeeklyReset: now.toISOString(),
             lastMonthlyReset: now.toISOString(),
             hasSeenWelcome: false,
-            unlockedRewardIds: ['border-welcome'], // Hadiah gratis untuk pengguna baru
-            activeBorderId: 'border-welcome', // Langsung aktifkan border gratis
+            unlockedRewardIds: ['border-welcome'], 
+            activeBorderId: 'border-welcome', 
         };
 
         const newMissions = await generateNewUserMissions(1);
@@ -276,7 +298,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
             console.error("Gagal memproses sesi login:", error);
             toast({ variant: 'destructive', title: 'Gagal Menyinkronkan', description: 'Memuat data lokal yang ada.'});
-            // Fallback ke data yang ada jika proses sesi gagal
             setCurrentUser(userToLogin);
             setMissions(storedMissions);
              if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, userToLogin.id);
@@ -318,10 +339,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         toast({ title: 'Hadiah Tidak Ditemukan', variant: 'destructive' });
         return;
     }
-     // Logika untuk hadiah musiman
     if (reward.season === 'Ramadan') {
         const now = new Date();
-        // Untuk prototipe, kita asumsikan Ramadan jatuh pada bulan Maret (bulan ke-3).
         if (now.getMonth() + 1 !== 3) { 
             toast({
                 title: 'Hadiah Musiman',
@@ -366,26 +385,19 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
 
-
   const completeMission = async (missionId: string, bonusXp: number = 0, overrideXp?: number) => {
     if (!currentUser) return;
     
     const mission = missions.find((m) => m.id === missionId);
     if (!mission || currentUser.completedMissions.includes(missionId)) return;
 
-    let xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
+    const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
     const totalXpGained = xpFromMission + bonusXp;
-    let leveledUp = false;
-    let newXp = currentUser.xp + totalXpGained;
-    let newLevel = currentUser.level;
-    let newXpToNextLevel = currentUser.xpToNextLevel;
-
-    while (newXp >= newXpToNextLevel) {
-      leveledUp = true;
-      newXp -= newXpToNextLevel;
-      newLevel += 1;
-      newXpToNextLevel = newLevel * 150;
-    }
+    
+    const newXp = currentUser.xp + totalXpGained;
+    const oldLevel = currentUser.level;
+    const newLevel = getLevelForXp(newXp);
+    const leveledUp = newLevel > oldLevel;
     
     let tempMissions = [...missions];
     if (mission.category === 'Harian') {
@@ -409,7 +421,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       ...currentUser,
       xp: newXp,
       level: newLevel,
-      xpToNextLevel: newXpToNextLevel,
+      xpToNextLevel: getTotalXpForLevel(newLevel + 1),
       title: getTitleForLevel(newLevel),
       completedMissions: [...currentUser.completedMissions, missionId],
     };
