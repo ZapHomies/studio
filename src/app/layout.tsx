@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { UserDataProvider, UserDataContext } from '@/context/UserDataProvider';
 import BottomNav from '@/components/BottomNav';
 import React, { useContext } from 'react';
+import { ThemeProvider } from '@/context/ThemeProvider';
 
 const fontHeadline = Playfair_Display({
   subsets: ['latin'],
@@ -19,7 +20,6 @@ const fontBody = PT_Sans({
   variable: '--font-body',
 });
 
-// This component can access the UserDataContext because it's a child of UserDataProvider
 function AppBody({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useContext(UserDataContext);
 
@@ -47,14 +47,16 @@ export default function RootLayout({
       </head>
       <body
         className={cn(
-          'min-h-screen bg-background font-body antialiased',
+          'min-h-screen bg-background font-body antialiased transition-colors duration-300',
           fontHeadline.variable,
           fontBody.variable
         )}
       >
-        <UserDataProvider>
-          <AppBody>{children}</AppBody>
-        </UserDataProvider>
+        <ThemeProvider>
+            <UserDataProvider>
+              <AppBody>{children}</AppBody>
+            </UserDataProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
