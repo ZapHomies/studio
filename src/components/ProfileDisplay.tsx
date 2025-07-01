@@ -26,7 +26,12 @@ const getTotalXpForLevel = (level: number): number => {
 
 export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
   const { currentUser, missions } = useContext(UserDataContext);
-  
+
+  const xpForCurrentLevelStart = useMemo(() => {
+    if (!currentUser) return 0;
+    return getTotalXpForLevel(currentUser.level);
+  }, [currentUser?.level]);
+
   if (!currentUser) {
     return null; // Atau skeleton loader
   }
@@ -35,7 +40,6 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
 
   const activeBorder = rewards.find(r => r.type === 'border' && r.id === currentUser.activeBorderId);
 
-  const xpForCurrentLevelStart = useMemo(() => getTotalXpForLevel(currentUser.level), [currentUser.level]);
   const xpForNextLevelStart = currentUser.xpToNextLevel;
 
   const totalXpForThisLevel = xpForNextLevelStart - xpForCurrentLevelStart;
