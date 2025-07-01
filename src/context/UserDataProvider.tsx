@@ -22,6 +22,7 @@ interface UserDataContextType {
   logout: () => void;
   register: (name: string, email: string, password: string) => Promise<void>;
   updateUser: (updatedData: Partial<Pick<User, 'name' | 'avatarUrl'>>) => void;
+  markWelcomeAsSeen: () => void;
 }
 
 const NUM_DAILY = 4;
@@ -39,6 +40,7 @@ export const UserDataContext = createContext<UserDataContextType>({
   logout: () => {},
   register: async () => {},
   updateUser: () => {},
+  markWelcomeAsSeen: () => {},
 });
 
 const getTitleForLevel = (level: number): string => {
@@ -73,14 +75,24 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window === 'undefined') return;
     localStorage.setItem(USERS_DB_KEY, JSON.stringify({ users, missions }));
   }, []);
+  
+  useEffect(() => {
+    if (isLoading) return; // Only save when not in initial loading phase
+    saveDataToStorage(allUsers, missions);
+  }, [allUsers, missions, isLoading, saveDataToStorage]);
 
   const generateNewUserMissions = async (level: number): Promise<Mission[]> => {
       const existingIds = staticMissions.map(m => m.id);
       const dailyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_DAILY, category: 'Harian' });
       const weeklyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_WEEKLY, category: 'Mingguan' });
       const monthlyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
+      
       const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyPromise]);
-      return [...staticMissions, ...dailyResult.missions, ...weeklyResult.missions, ...monthlyResult.missions];
+      
+      const combinedMissions = [...staticMissions, ...dailyResult.missions, ...weeklyResult.missions, ...monthlyResult.missions];
+      
+      setMissions(combinedMissions);
+      return combinedMissions;
   };
 
   const processUserSession = useCallback(async (user: User, currentMissions: Mission[], allUsers: User[]): Promise<{ updatedUser: User, updatedMissions: Mission[] }> => {
@@ -120,30 +132,27 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         userToUpdate.completedMissions = userToUpdate.completedMissions.filter(id => currentMissionIds.has(id) || staticAutoMissionIds.has(id));
     }
     
-    const updatedUsers = allUsers.map(u => u.id === userToUpdate.id ? userToUpdate : u);
-    setAllUsers(updatedUsers);
-    setCurrentUser(userToUpdate);
-    setMissions(missionsToUpdate);
-    saveDataToStorage(updatedUsers, missionsToUpdate);
-    
     return { updatedUser: userToUpdate, updatedMissions: missionsToUpdate };
-  }, [saveDataToStorage]);
+  }, []);
 
   const rehydrateSession = useCallback(async () => {
-    setIsLoading(true);
     const { users, missions: storedMissions } = loadDataFromStorage();
     const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) : null;
 
     if (sessionId && users.length > 0) {
       const userFromSession = users.find(u => u.id === sessionId);
       if (userFromSession) {
-        await processUserSession(userFromSession, storedMissions, users);
+        const { updatedUser, updatedMissions } = await processUserSession(userFromSession, storedMissions, users);
+        setAllUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+        setCurrentUser(updatedUser);
+        setMissions(updatedMissions);
       } else {
         sessionStorage.removeItem(SESSION_KEY);
       }
+    } else {
+       setAllUsers(users);
+       setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
     }
-    setAllUsers(users);
-    setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
     setIsLoading(false);
   }, [loadDataFromStorage, processUserSession]);
 
@@ -165,7 +174,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
-    const { users, missions: storedMissions } = loadDataFromStorage();
+    const { users } = loadDataFromStorage();
     
     if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
         toast({ title: 'Pendaftaran Gagal', description: 'Email ini sudah terdaftar.', variant: 'destructive' });
@@ -179,7 +188,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             id: email.toLowerCase(),
             name,
             email: email.toLowerCase(),
-            password, // Di aplikasi nyata, HASH PASSWORD INI!
+            password,
             avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
             level: 1,
             xp: 0,
@@ -189,16 +198,20 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             lastDailyReset: now.toISOString(),
             lastWeeklyReset: now.toISOString(),
             lastMonthlyReset: now.toISOString(),
+            hasSeenWelcome: false,
         };
 
-        const newMissions = storedMissions.length > 0 ? storedMissions : await generateNewUserMissions(1);
+        const newMissions = await generateNewUserMissions(1);
         const newUsers = [...users, newUser];
 
-        setCurrentUser(newUser);
-        setMissions(newMissions);
         setAllUsers(newUsers);
-        saveDataToStorage(newUsers, newMissions);
-        if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, newUser.id);
+        setMissions(newMissions);
+        setCurrentUser(newUser);
+
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem(SESSION_KEY, newUser.id);
+            localStorage.setItem(USERS_DB_KEY, JSON.stringify({ users: newUsers, missions: newMissions }));
+        }
         
         toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat.', variant: 'success' });
     } catch(error) {
@@ -215,8 +228,15 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const userToLogin = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (userToLogin && userToLogin.password === password) {
-      await processUserSession(userToLogin, storedMissions, users);
-      if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, userToLogin.id);
+      const userWithWelcomeFlag = { ...userToLogin, hasSeenWelcome: userToLogin.hasSeenWelcome ?? true };
+      const { updatedUser, updatedMissions } = await processUserSession(userWithWelcomeFlag, storedMissions, users);
+      
+      const updatedUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
+      setAllUsers(updatedUsers);
+      setCurrentUser(updatedUser);
+      setMissions(updatedMissions);
+      
+      if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, updatedUser.id);
       toast({ title: `Selamat Datang Kembali, ${userToLogin.name}!`, variant: 'success' });
     } else {
       toast({ title: 'Login Gagal', description: 'Email atau password salah.', variant: 'destructive' });
@@ -234,14 +254,20 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     
     const updatedUser = { ...currentUser, ...updatedData };
-    const updatedUsers = allUsers.map(u => u.id === updatedUser.id ? updatedUser : u);
     
     setCurrentUser(updatedUser);
-    setAllUsers(updatedUsers);
-    saveDataToStorage(updatedUsers, missions);
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
 
     toast({ title: 'Profil Diperbarui!', variant: 'success' });
   };
+  
+  const markWelcomeAsSeen = () => {
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, hasSeenWelcome: true };
+    setCurrentUser(updatedUser);
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
 
   const completeMission = async (missionId: string, bonusXp: number = 0, overrideXp?: number) => {
     if (!currentUser) return;
@@ -249,7 +275,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const mission = missions.find((m) => m.id === missionId);
     if (!mission || currentUser.completedMissions.includes(missionId)) return;
 
-    const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
+    let xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
     const totalXpGained = xpFromMission + bonusXp;
     let leveledUp = false;
     let newXp = currentUser.xp + totalXpGained;
@@ -263,16 +289,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       newXpToNextLevel = newLevel * 150;
     }
     
-    const updatedUser: User = {
-      ...currentUser,
-      xp: newXp,
-      level: newLevel,
-      xpToNextLevel: newXpToNextLevel,
-      title: getTitleForLevel(newLevel),
-      completedMissions: [...currentUser.completedMissions, missionId],
-    };
-
-    let updatedMissions = [...missions];
+    let tempMissions = [...missions];
     if (mission.category === 'Harian') {
       try {
         const { missions: newMissions } = await generateMissions({
@@ -282,20 +299,26 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             category: 'Harian'
         });
         if (newMissions && newMissions.length > 0) {
-           const missionIndex = updatedMissions.findIndex(m => m.id === missionId);
+           const missionIndex = tempMissions.findIndex(m => m.id === missionId);
            if (missionIndex !== -1) {
-               updatedMissions[missionIndex] = newMissions[0];
+               tempMissions[missionIndex] = newMissions[0];
            }
         }
       } catch (error) { console.error("Gagal membuat misi pengganti:", error); }
     }
-    
-    const updatedUsers = allUsers.map(u => u.id === updatedUser.id ? updatedUser : u);
+
+    const updatedUser: User = {
+      ...currentUser,
+      xp: newXp,
+      level: newLevel,
+      xpToNextLevel: newXpToNextLevel,
+      title: getTitleForLevel(newLevel),
+      completedMissions: [...currentUser.completedMissions, missionId],
+    };
     
     setCurrentUser(updatedUser);
-    setMissions(updatedMissions);
-    setAllUsers(updatedUsers);
-    saveDataToStorage(updatedUsers, updatedMissions);
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setMissions(tempMissions);
 
     if (leveledUp) {
         toast({
@@ -306,7 +329,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const value = { currentUser, missions, allUsers, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser };
+  const value = { currentUser, missions, allUsers, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser, markWelcomeAsSeen };
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
 };

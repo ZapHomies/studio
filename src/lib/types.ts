@@ -13,6 +13,8 @@ export interface User {
   lastDailyReset: string;
   lastWeeklyReset: string;
   lastMonthlyReset: string;
+  // Flag untuk onboarding
+  hasSeenWelcome: boolean;
 }
 
 export interface Mission {
