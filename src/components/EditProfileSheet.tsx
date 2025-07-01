@@ -28,26 +28,27 @@ interface EditProfileSheetProps {
 }
 
 export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSheetProps) {
-  const { user, updateUser } = useContext(UserDataContext);
+  const { currentUser, updateUser } = useContext(UserDataContext);
   const { toast } = useToast();
   
-  const [name, setName] = useState(user.name);
-  const [selectedAvatarUrl, setSelectedAvatarUrl] = useState(user.avatarUrl);
+  const [name, setName] = useState(currentUser?.name || '');
+  const [selectedAvatarUrl, setSelectedAvatarUrl] = useState(currentUser?.avatarUrl || '');
   
   const [generationPrompt, setGenerationPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setName(user.name);
-      setSelectedAvatarUrl(user.avatarUrl);
+    if (isOpen && currentUser) {
+      setName(currentUser.name);
+      setSelectedAvatarUrl(currentUser.avatarUrl);
       setGeneratedAvatarUrl(null);
       setGenerationPrompt('');
     }
-  }, [isOpen, user]);
+  }, [isOpen, currentUser]);
 
   const handleSave = () => {
+    if (!currentUser) return;
     updateUser({ name, avatarUrl: selectedAvatarUrl });
     onOpenChange(false);
   };

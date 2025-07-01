@@ -9,22 +9,6 @@ export const avatarPool: { url: string; hint: string }[] = [
   { url: 'https://placehold.co/128x128/2ecc71/ffffff.png', hint: 'islamic girl green' },
 ];
 
-export const initialUser: User = {
-  name: 'Abdullah',
-  avatarUrl: avatarPool[0].url,
-  level: 1,
-  xp: 0,
-  xpToNextLevel: 150,
-  completedMissions: [],
-  title: 'Muslim Baru',
-  lastDailyReset: new Date(0).toISOString(),
-  lastWeeklyReset: new Date(0).toISOString(),
-  lastMonthlyReset: new Date(0).toISOString(),
-};
-
-// --- Static Missions ---
-// Hanya misi yang memiliki logika khusus (seperti penyelesaian otomatis) yang harus ada di sini.
-// Sisanya akan dibuat oleh AI.
 export const staticMissions: Mission[] = [
   {
     id: 'monthly-quran-recite',

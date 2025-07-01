@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useContext, useState, useMemo } from 'react';
@@ -12,8 +11,11 @@ import { CheckCircle, Zap, ChevronsRight, Calendar, Star, Moon, Loader2 } from '
 import { useToast } from '@/hooks/use-toast';
 
 const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { mission: Mission, onAction: (mission: Mission) => void, onOpenDialog: (mission: Mission) => void, isCompleting: boolean }) => {
-    const { user } = useContext(UserDataContext);
-    const isCompleted = user.completedMissions.includes(mission.id);
+    const { currentUser } = useContext(UserDataContext);
+    
+    if (!currentUser) return null;
+
+    const isCompleted = currentUser.completedMissions.includes(mission.id);
 
     const renderMissionButton = () => {
         if (isCompleted) {
@@ -78,13 +80,12 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
 
 
 export default function MissionList() {
-  const { missions, isLoading, user } = useContext(UserDataContext);
+  const { missions, isLoading, currentUser, completeMission } = useContext(UserDataContext);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [completingMissionId, setCompletingMissionId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { completeMission } = useContext(UserDataContext);
-
+  
   const handleOpenDialog = (mission: Mission) => {
     setSelectedMission(mission);
     setIsDialogOpen(true);
@@ -133,7 +134,9 @@ export default function MissionList() {
     }
     if (missionList.length === 0) return null;
 
-    const allCompleted = missionList.every(m => user.completedMissions.includes(m.id));
+    if (!currentUser) return null;
+
+    const allCompleted = missionList.every(m => currentUser.completedMissions.includes(m.id));
 
     return (
       <div className="mb-12">

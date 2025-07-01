@@ -19,7 +19,7 @@ export default function RecitationTool() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const { toast } = useToast();
-  const { user, missions, completeMission } = useContext(UserDataContext);
+  const { currentUser, missions, completeMission } = useContext(UserDataContext);
 
   useEffect(() => {
     return () => {
@@ -77,17 +77,17 @@ export default function RecitationTool() {
         const result = await provideRecitationFeedback({ audioDataUri });
         setFeedback(result.feedback);
         
-        // Auto-complete Quran mission ('monthly-quran-recite')
-        const quranMission = missions.find(m => m.id === 'monthly-quran-recite');
-        if (quranMission && !user.completedMissions.includes(quranMission.id)) {
-            // Dynamic XP based on recording time. 10 base + 2 XP per second, max 200.
-            const xpGained = Math.min(200, 10 + (timer * 2));
-            await completeMission(quranMission.id, 0, xpGained);
-            toast({
-                title: "Misi Otomatis Selesai!",
-                description: `Anda menyelesaikan "${quranMission.title}" dan mendapatkan ${xpGained} XP.`,
-                variant: 'success'
-            });
+        if (currentUser) {
+            const quranMission = missions.find(m => m.id === 'monthly-quran-recite');
+            if (quranMission && !currentUser.completedMissions.includes(quranMission.id)) {
+                const xpGained = Math.min(200, 10 + (timer * 2));
+                await completeMission(quranMission.id, 0, xpGained);
+                toast({
+                    title: "Misi Otomatis Selesai!",
+                    description: `Anda menyelesaikan "${quranMission.title}" dan mendapatkan ${xpGained} XP.`,
+                    variant: 'success'
+                });
+            }
         }
       } catch (error) {
         toast({

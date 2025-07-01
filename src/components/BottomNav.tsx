@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Mic, User } from 'lucide-react';
+import { Home, Mic, User, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/missions', icon: Home, label: 'Misi' },
+  { href: '/leaderboard', icon: Trophy, label: 'Peringkat' },
   { href: '/recitation', icon: Mic, label: 'Mengaji' },
   { href: '/profile', icon: User, label: 'Profil' },
 ];
@@ -15,8 +16,8 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-2xl items-center justify-around px-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/90 backdrop-blur-sm">
+      <div className="mx-auto grid h-16 max-w-2xl grid-cols-4 items-center justify-around px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -24,9 +25,9 @@ export default function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex flex-col items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200',
                 isActive
-                  ? 'text-primary'
+                  ? 'scale-110 text-primary'
                   : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'
               )}
             >

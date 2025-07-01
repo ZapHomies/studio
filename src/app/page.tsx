@@ -8,29 +8,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { KaabaIcon } from '@/components/icons/KaabaIcon';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const [name, setName] = useState('');
-  const { login, isLoading: isContextLoading } = useContext(UserDataContext);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const { login, isLoading } = useContext(UserDataContext);
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
-      setIsLoggingIn(true);
-      await login(name.trim());
-      // The context will handle redirecting and loading state changes.
-      // We set this to false here, but the context's `isLoading` is the source of truth.
-      setIsLoggingIn(false); 
+    if (email.trim() && password.trim()) {
+      await login(email.trim(), password);
+    } else {
+      toast({
+        title: 'Form Tidak Lengkap',
+        description: 'Mohon masukkan email dan password.',
+        variant: 'destructive',
+      });
     }
   };
 
-  // Combine local loading state (during the login action) with context's global loading state
-  const isLoading = isContextLoading || isLoggingIn;
-
-  // Show a full-page loader if the context is busy (e.g., rehydrating session or processing login)
-  if (isContextLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -58,23 +59,46 @@ export default function LoginPage() {
           <form onSubmit={handleLogin}>
             <CardHeader>
               <CardTitle className="font-headline text-2xl">Login</CardTitle>
-              <CardDescription>Masukkan nama Anda untuk melanjutkan.</CardDescription>
+              <CardDescription>Masukkan email dan password untuk melanjutkan.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nama</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="name"
-                  placeholder="Contoh: Abdullah"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="email@contoh.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={isLoading}
                 />
               </div>
+              <div className="relative space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="********"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-7 h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label="Toggle password visibility"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </Button>
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isLoading || !name.trim()}>
+              <Button type="submit" className="w-full" disabled={isLoading || !email.trim() || !password.trim()}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Masuk
               </Button>

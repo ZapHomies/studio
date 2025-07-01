@@ -2,78 +2,73 @@
 
 import { useContext } from 'react';
 import { UserDataContext } from '@/context/UserDataProvider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from './ui/separator';
-import { ShieldCheck, LogOut, Award, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { avatarPool } from '@/lib/data';
+import { LogOut, Award, CheckCircle, BarChart2 } from 'lucide-react';
 
 export default function ProfileDisplay() {
-  const { user, missions, logout } = useContext(UserDataContext);
-  const progressPercentage = (user.xp / user.xpToNextLevel) * 100;
+  const { currentUser, missions, logout } = useContext(UserDataContext);
+  
+  if (!currentUser) {
+    return null; // Atau skeleton loader
+  }
 
-  const completedMissions = missions.filter(m => user.completedMissions.includes(m.id));
-  const avatarHint = avatarPool.find(a => a.url === user.avatarUrl)?.hint || 'muslim avatar';
+  const progressPercentage = (currentUser.xp / currentUser.xpToNextLevel) * 100;
+  const completedMissions = missions.filter(m => currentUser.completedMissions.includes(m.id));
 
   return (
     <div className="space-y-8">
-      <Card className="overflow-hidden shadow-lg">
-        <CardHeader className="flex flex-col items-center gap-6 bg-secondary/50 p-6 text-center md:flex-row md:text-left">
-          <Avatar className="h-28 w-28 border-4 border-accent shadow-md">
-            <AvatarImage src={user.avatarUrl} alt={user.name} data-ai-hint={avatarHint} />
-            <AvatarFallback className="text-4xl">{user.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <div className='flex-1'>
-            <CardTitle className="font-headline text-4xl">{user.name}</CardTitle>
-            <div className="mt-1 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                <Badge variant="default" className="text-lg">Level {user.level}</Badge>
-                <Badge variant="secondary" className="gap-1.5 text-lg"><Award className="h-4 w-4"/>{user.title}</Badge>
+      <Card className="overflow-hidden border-2 border-primary/20 shadow-lg">
+        <div className="bg-gradient-to-br from-primary/10 to-card p-8">
+          <div className="flex flex-col items-center gap-6 text-center">
+            <Avatar className="h-32 w-32 border-4 border-accent shadow-xl">
+              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+              <AvatarFallback className="text-5xl">{currentUser.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <CardTitle className="font-headline text-5xl text-primary">{currentUser.name}</CardTitle>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                  <Badge variant="default" className="px-4 py-1 text-lg">Level {currentUser.level}</Badge>
+                  <Badge variant="secondary" className="gap-1.5 px-4 py-1 text-lg"><Award className="h-4 w-4"/>{currentUser.title}</Badge>
+              </div>
             </div>
-            <div className="mt-4 w-full">
-              <div className="mb-1 flex justify-between text-sm font-medium text-muted-foreground">
+          </div>
+        </div>
+        <CardContent className="space-y-6 p-6">
+           <div className="w-full">
+              <div className="mb-2 flex justify-between text-md font-medium text-muted-foreground">
                 <span>Kemajuan Level</span>
                 <span>
-                  {user.xp} / {user.xpToNextLevel} XP
+                  {currentUser.xp.toLocaleString()} / {currentUser.xpToNextLevel.toLocaleString()} XP
                 </span>
               </div>
               <Progress value={progressPercentage} className="h-4" />
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-           <Button onClick={logout} variant="outline" className="w-full">
-            <LogOut className="mr-2 h-4 w-4" />
+
+            <div className="grid grid-cols-1 gap-4 text-center md:grid-cols-2">
+                <Card className="bg-secondary/50 p-4">
+                    <CardHeader className="p-0">
+                        <CardTitle className="flex items-center justify-center gap-2 text-muted-foreground"><CheckCircle className="h-5 w-5"/>Misi Selesai</CardTitle>
+                    </CardHeader>
+                    <p className="font-headline text-4xl mt-2">{completedMissions.length}</p>
+                </Card>
+                 <Card className="bg-secondary/50 p-4">
+                    <CardHeader className="p-0">
+                        <CardTitle className="flex items-center justify-center gap-2 text-muted-foreground"><BarChart2 className="h-5 w-5"/>Total Misi</CardTitle>
+                    </CardHeader>
+                    <p className="font-headline text-4xl mt-2">{missions.length}</p>
+                </Card>
+            </div>
+
+           <Button onClick={logout} variant="outline" className="h-12 w-full text-lg">
+            <LogOut className="mr-2 h-5 w-5" />
             Keluar
           </Button>
         </CardContent>
       </Card>
-
-      <Separator />
-
-      <div>
-        <h2 className="mb-4 font-headline text-3xl font-bold">Misi Selesai</h2>
-        {completedMissions.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {completedMissions.map((mission) => (
-              <Card key={mission.id} className="flex items-center p-4 bg-card/80 shadow-sm">
-                <ShieldCheck className="h-8 w-8 flex-shrink-0 text-success mr-4" />
-                <div className="flex-grow">
-                  <p className="font-semibold">{mission.title}</p>
-                  <p className="text-sm text-muted-foreground">+{mission.xp} XP</p>
-                </div>
-                <CheckCircle className="h-6 w-6 flex-shrink-0 text-success" />
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <p className="py-8 text-center text-muted-foreground">
-            Anda belum menyelesaikan misi apa pun. Buka tab misi untuk memulai!
-          </p>
-        )}
-      </div>
     </div>
   );
 }
