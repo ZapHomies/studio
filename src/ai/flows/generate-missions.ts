@@ -56,15 +56,15 @@ Anda akan membuat {{count}} misi untuk kategori '{{category}}'.
 
 PERATURAN PENTING:
 1.  **Bahasa:** Semua teks (judul, deskripsi) HARUS dalam Bahasa Indonesia yang ramah dan memotivasi.
-2.  **Kategori & Hadiah:**
-    *   **Harian:** Tugas kecil. XP: 10-30. Koin: 15-30.
-    *   **Mingguan:** Komitmen lebih besar. XP: 50-100. Koin: 75-125.
-    *   **Bulanan:** Tujuan jangka panjang. XP: 150-300. Koin: 200-400.
+2.  **Kategori & Hadiah (XP & Koin):**
+    *   **Harian:** Tugas kecil dan cepat. XP: 10-30. Koin: 25-50.
+    *   **Mingguan:** Komitmen sedang. XP: 50-100. Koin: 100-175.
+    *   **Bulanan:** Tantangan besar. XP: 150-300. Koin: 300-500.
 3.  **Level Pengguna (saat ini {{level}}):** Sesuaikan kesulitan misi. Untuk level rendah, berikan misi yang lebih mudah. Untuk level tinggi, berikan tantangan yang lebih besar.
 4.  **Tipe Misi:** Hasilkan campuran misi tipe 'action' (tandai selesai) dan 'photo' (unggah foto untuk bonus). JANGAN PERNAH membuat misi tipe 'auto'.
 5.  **Bonus XP:** Untuk misi 'photo', selalu sertakan \`bonusXp\` yang masuk akal (sekitar 50% dari XP dasar). Misi 'photo' tidak memberikan bonus koin.
 6.  **ID Unik:** Pastikan ID unik dan deskriptif (contoh: 'harian-sedekah-subuh'). JANGAN ulangi ID dari daftar ID yang sudah ada: {{{json existingMissionIds}}}.
-7.  **Hadiah Koin:** Pastikan setiap misi yang Anda buat memiliki hadiah Koin lebih besar dari nol. Hadiah koin TIDAK BOLEH 0.
+7.  **HADIAH KOIN WAJIB:** Semua misi HARUS memberikan hadiah Koin. Nilai 'coins' TIDAK BOLEH 0 atau kurang. Ini adalah aturan paling penting.
 8.  **Kreativitas:** Buat misi yang beragam dan tidak monoton. Contoh ide:
     *   Harian: "Ucapkan Shalawat 100x", "Senyum kepada 3 orang", "Mendoakan orang tua", "Belajar 1 kosakata Arab".
     *   Mingguan: "Salat di masjid pada hari Jumat", "Menjenguk teman yang sakit", "Membaca Surah Al-Kahfi".
@@ -82,6 +82,34 @@ const generateMissionsFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await prompt(input);
-    return output!;
+    
+    if (!output?.missions) {
+      return { missions: [] };
+    }
+
+    // Filter Pengaman: Pastikan semua misi memiliki Koin > 0.
+    const processedMissions = output.missions.map(mission => {
+      let newMission = { ...mission };
+      // Jika AI gagal memberikan koin, kita berikan nilai default.
+      if (!newMission.coins || newMission.coins <= 0) {
+        console.warn(`Misi "${newMission.title}" dihasilkan dengan koin nol. Memberikan nilai default.`);
+        switch (newMission.category) {
+          case 'Harian':
+            newMission.coins = 25;
+            break;
+          case 'Mingguan':
+            newMission.coins = 100;
+            break;
+          case 'Bulanan':
+            newMission.coins = 300;
+            break;
+          default:
+            newMission.coins = 25; // Fallback
+        }
+      }
+      return newMission;
+    });
+
+    return { missions: processedMissions };
   }
 );
