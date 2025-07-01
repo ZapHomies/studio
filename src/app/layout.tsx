@@ -42,8 +42,8 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-          <title>DeenDaily</title>
-          <meta name="description" content="Teman harianmu untuk misi dan pertumbuhan Islami." />
+          <title>Muslim Mission</title>
+          <meta name="description" content="Selesaikan misi Islami, dapatkan XP, dan tingkatkan iman Anda dengan Muslim Mission." />
       </head>
       <body
         className={cn(

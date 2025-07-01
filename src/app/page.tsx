@@ -48,7 +48,7 @@ export default function LoginPage() {
         <header className="mb-8 flex flex-col items-center justify-center text-center">
           <KaabaIcon className="h-16 w-16 text-primary" />
           <h1 className="ml-4 mt-4 font-headline text-5xl font-bold text-primary">
-            DeenDaily
+            Muslim Mission
           </h1>
            <p className="mt-2 text-center text-lg text-muted-foreground">
             Selamat datang kembali!

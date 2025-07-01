@@ -49,7 +49,7 @@ const prompt = ai.definePrompt({
     name: 'generateMissionsPrompt',
     input: { schema: GenerateMissionsInputSchema },
     output: { schema: GenerateMissionsOutputSchema },
-    prompt: `Anda adalah seorang mentor Islami yang bijaksana dan kreatif untuk aplikasi bernama DeenDaily. Tugas Anda adalah membuat misi-misi Islami yang bermakna, menarik, dan dapat dicapai untuk pengguna.
+    prompt: `Anda adalah seorang mentor Islami yang bijaksana dan kreatif untuk aplikasi bernama Muslim Mission. Tugas Anda adalah membuat misi-misi Islami yang bermakna, menarik, dan dapat dicapai untuk pengguna.
 
 Anda akan membuat {{count}} misi untuk kategori '{{category}}'.
 

@@ -91,7 +91,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     
     setUser(finalData.user);
     setMissions(finalData.missions);
-    localStorage.setItem('deen-daily-data', JSON.stringify(finalData));
+    localStorage.setItem('muslim-mission-data', JSON.stringify(finalData));
     
     return finalData;
   }, []);
@@ -99,7 +99,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const loadUserFromStorage = useCallback(async () => {
     setIsLoading(true);
     try {
-      const storedDataRaw = localStorage.getItem('deen-daily-data');
+      const storedDataRaw = localStorage.getItem('muslim-mission-data');
       if (storedDataRaw) {
         const storedData = JSON.parse(storedDataRaw);
         if (storedData.user && storedData.missions) {
@@ -109,7 +109,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Gagal memuat sesi:", error);
-      localStorage.removeItem('deen-daily-data');
+      localStorage.removeItem('muslim-mission-data');
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +141,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const login = async (name: string) => {
     setIsLoading(true);
     try {
-      const storedDataRaw = localStorage.getItem('deen-daily-data');
+      const storedDataRaw = localStorage.getItem('muslim-mission-data');
       if (storedDataRaw) {
           const storedData = JSON.parse(storedDataRaw);
           if (storedData.user && storedData.user.name.toLowerCase() === name.toLowerCase()) {
@@ -188,7 +188,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       
       setUser(newUser);
       setMissions(newMissions);
-      localStorage.setItem('deen-daily-data', JSON.stringify({ user: newUser, missions: newMissions }));
+      localStorage.setItem('muslim-mission-data', JSON.stringify({ user: newUser, missions: newMissions }));
       setIsAuthenticated(true);
 
       toast({
@@ -209,7 +209,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const logout = () => {
-    localStorage.removeItem('deen-daily-data');
+    localStorage.removeItem('muslim-mission-data');
     setUser(initialUser);
     setMissions([]);
     setIsAuthenticated(false);
@@ -219,7 +219,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const updateUser = (updatedData: Partial<User>) => {
     const updatedUser = { ...user, ...updatedData };
     setUser(updatedUser);
-    localStorage.setItem('deen-daily-data', JSON.stringify({ user: updatedUser, missions }));
+    localStorage.setItem('muslim-mission-data', JSON.stringify({ user: updatedUser, missions }));
     toast({
         title: 'Profil Diperbarui!',
         description: 'Informasi profil Anda telah berhasil disimpan.',
@@ -282,7 +282,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         
     setUser(updatedUser);
     setMissions(updatedMissions);
-    localStorage.setItem('deen-daily-data', JSON.stringify({ user: updatedUser, missions: updatedMissions }));
+    localStorage.setItem('muslim-mission-data', JSON.stringify({ user: updatedUser, missions: updatedMissions }));
 
     if (leveledUp) {
         toast({

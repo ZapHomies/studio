@@ -19,7 +19,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, _setTheme] = useState<Theme>(initialState.theme);
 
   useEffect(() => {
-    const storedThemeName = localStorage.getItem('deendaily-theme');
+    const storedThemeName = localStorage.getItem('muslim-mission-theme');
     const storedTheme = themes.find((t) => t.name === storedThemeName) || themes[0];
     if (storedTheme) {
         setTheme(storedTheme.name);
@@ -38,7 +38,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const newTheme = themes.find((t) => t.name === name);
     if (newTheme) {
       _setTheme(newTheme);
-      localStorage.setItem('deendaily-theme', name);
+      localStorage.setItem('muslim-mission-theme', name);
       applyTheme(newTheme);
     }
   };
