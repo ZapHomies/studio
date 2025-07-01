@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useContext } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { provideRecitationFeedback } from '@/ai/flows/provide-recitation-feedback';
 import { Mic, Square, Loader2, BookOpen } from 'lucide-react';
@@ -139,19 +138,17 @@ export default function RecitationTool() {
     <Card className="shadow-lg">
       <CardContent className="p-6 flex flex-col items-center gap-6">
         {getButton()}
+        
         {feedback && (
-          <Card className="w-full bg-background/50">
-            <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">
-                <BookOpen />
-                Umpan Balik Bacaan
-              </Title>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground whitespace-pre-wrap">{feedback}</p>
-            </CardContent>
-          </Card>
+          <div className="w-full rounded-lg border bg-background/50 p-4 space-y-2">
+            <h3 className="font-headline flex items-center gap-2 text-lg font-semibold">
+              <BookOpen className="h-5 w-5"/>
+              Umpan Balik Bacaan
+            </h3>
+            <p className="text-foreground whitespace-pre-wrap">{feedback}</p>
+          </div>
         )}
+
         {status === 'idle' && !feedback && (
             <div className="text-center text-muted-foreground p-8">
                 <p>Tekan "Mulai Merekam" untuk memulai bacaan Anda.</p>
