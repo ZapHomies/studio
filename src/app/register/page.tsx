@@ -9,21 +9,32 @@ import { Label } from '@/components/ui/label';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { KaabaIcon } from '@/components/icons/KaabaIcon';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
   const { register } = useContext(UserDataContext);
   const [isRegistering, setIsRegistering] = useState(false);
+  const { toast } = useToast();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
-      setIsRegistering(true);
-      // Simulate network delay
-      setTimeout(() => {
-        register(name.trim());
-        // No need to setIsRegistering(false) as context will redirect
-      }, 500);
+    if (!name.trim()) {
+      toast({
+        title: 'Nama Diperlukan',
+        description: 'Silakan masukkan nama untuk mendaftar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsRegistering(true);
+    try {
+      await register(name.trim());
+      // The context will handle the redirect automatically after successful registration.
+    } catch (error) {
+      // The context already shows a toast on failure, but we can reset the button here.
+      setIsRegistering(false);
     }
   };
 
@@ -54,11 +65,12 @@ export default function RegisterPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  disabled={isRegistering}
                 />
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button type="submit" className="w-full" disabled={isRegistering}>
+              <Button type="submit" className="w-full" disabled={isRegistering || !name.trim()}>
                 {isRegistering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Daftar
               </Button>
