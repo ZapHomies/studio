@@ -35,6 +35,7 @@ export default function MissionCompletionDialog({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<VerificationStatus>('idle');
+  const [isCompleting, setIsCompleting] = useState(false);
   const [verificationFeedback, setVerificationFeedback] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -45,6 +46,7 @@ export default function MissionCompletionDialog({
     setPreview(null);
     setStatus('idle');
     setVerificationFeedback('');
+    setIsCompleting(false);
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
@@ -65,9 +67,10 @@ export default function MissionCompletionDialog({
     }
   };
 
-  const handleCompleteWithoutProof = () => {
+  const handleCompleteWithoutProof = async () => {
     if (!mission) return;
-    completeMission(mission.id);
+    setIsCompleting(true);
+    await completeMission(mission.id);
     toast({
         title: 'Misi Selesai!',
         description: `Anda mendapatkan ${mission.xp} XP.`,
@@ -96,7 +99,7 @@ export default function MissionCompletionDialog({
 
         if (result.isRelevant) {
           setStatus('success');
-          completeMission(mission.id, mission.bonusXp);
+          await completeMission(mission.id, mission.bonusXp);
           toast({
             title: 'Bonus Didapat!',
             description: `Bukti terverifikasi! Anda mendapatkan total ${mission.xp + (mission.bonusXp || 0)} XP.`,
@@ -140,6 +143,7 @@ export default function MissionCompletionDialog({
             setFile(null);
             setPreview(null);
             setVerificationFeedback('');
+            setIsCompleting(false);
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
@@ -147,10 +151,12 @@ export default function MissionCompletionDialog({
     }
   }, [isOpen]);
 
+  const isBusy = status === 'verifying' || status === 'success' || isCompleting;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => {
-          if (status === 'verifying') {
+          if (isBusy) {
             e.preventDefault();
           }
         }}>
@@ -170,6 +176,7 @@ export default function MissionCompletionDialog({
               ref={fileInputRef}
               onChange={handleFileChange}
               className="cursor-pointer"
+              disabled={isBusy}
             />
           </div>
           {preview && (
@@ -187,10 +194,11 @@ export default function MissionCompletionDialog({
           )}
         </div>
         <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
-          <Button variant="secondary" onClick={handleCompleteWithoutProof} disabled={status === 'verifying' || status === 'success'}>
+          <Button variant="secondary" onClick={handleCompleteWithoutProof} disabled={isBusy}>
+            {isCompleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Selesaikan ({mission?.xp} XP)
           </Button>
-          <Button onClick={handleVerify} disabled={!file || status === 'verifying' || status === 'success'}>
+          <Button onClick={handleVerify} disabled={!file || isBusy}>
             {status === 'verifying' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2"/>}
             {status === 'verifying' ? 'Memverifikasi...' : `Klaim Bonus (+${mission?.bonusXp || 0} XP)`}
           </Button>

@@ -83,7 +83,7 @@ export default function RecitationTool() {
         if (quranMission && !user.completedMissions.includes(quranMission.id)) {
             // Dynamic XP based on recording time. 10 base + 2 XP per second, max 200.
             const xpGained = Math.min(200, 10 + (timer * 2));
-            completeMission(quranMission.id, 0, xpGained);
+            await completeMission(quranMission.id, 0, xpGained);
             toast({
                 title: "Misi Otomatis Selesai!",
                 description: `Anda menyelesaikan "${quranMission.title}" dan mendapatkan ${xpGained} XP.`,
@@ -145,7 +145,7 @@ export default function RecitationTool() {
               <CardTitle className="font-headline flex items-center gap-2">
                 <BookOpen />
                 Umpan Balik Bacaan
-              </CardTitle>
+              </Title>
             </CardHeader>
             <CardContent>
               <p className="text-foreground whitespace-pre-wrap">{feedback}</p>
