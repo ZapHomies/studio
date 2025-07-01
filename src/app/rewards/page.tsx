@@ -6,7 +6,7 @@ import { rewards, type Reward } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Gift, Check, Gem, CalendarClock } from 'lucide-react';
+import { Gift, Check, Gem, CalendarClock, Coins } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { themes } from '@/lib/themes';
 
@@ -17,14 +17,13 @@ const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean 
     if (!currentUser) return null;
 
     const isUnlocked = currentUser.unlockedRewardIds.includes(reward.id);
-    const canAfford = currentUser.xp >= reward.cost;
+    const canAfford = (currentUser.coins || 0) >= reward.cost;
     const isSeasonal = reward.season === 'Ramadan';
     const isEventActive = isRamadan;
 
     const handleRedeem = () => {
         if (isUnlocked) return;
         
-        // This check is a safeguard, but the button should already be disabled.
         if (isSeasonal && !isEventActive) {
             toast({
                 variant: 'destructive',
@@ -37,8 +36,8 @@ const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean 
         if (!canAfford) {
             toast({
                 variant: 'destructive',
-                title: 'XP Tidak Cukup',
-                description: `Anda memerlukan ${reward.cost.toLocaleString()} XP untuk menukarkan hadiah ini.`,
+                title: 'Koin Tidak Cukup',
+                description: `Anda memerlukan ${reward.cost.toLocaleString()} Koin untuk menukarkan hadiah ini.`,
             });
             return;
         }
@@ -125,7 +124,7 @@ const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean 
                 </>
             ) : reward.cost > 0 ? (
                 <>
-                Tukar ({reward.cost.toLocaleString()} XP)
+                Tukar ({reward.cost.toLocaleString()} Koin)
                 </>
             ) : (
                 <>
@@ -159,11 +158,12 @@ export default function RewardsPage() {
                 <Gift className="h-16 w-16 text-primary" />
                 <h1 className="mt-4 font-headline text-4xl font-bold text-primary sm:text-5xl">Toko Hadiah</h1>
                 <p className="mt-2 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                Gunakan XP yang telah Anda kumpulkan untuk menukarkan hadiah eksklusif!
+                Gunakan Koin yang telah Anda kumpulkan untuk menukarkan hadiah eksklusif!
                 </p>
                 {currentUser && (
-                    <div className="mt-4 rounded-full bg-amber-400/20 px-4 py-2 font-bold text-amber-600">
-                        XP Anda: {currentUser.xp.toLocaleString()}
+                    <div className="mt-4 flex items-center gap-2 rounded-full bg-amber-400/20 px-4 py-2 font-bold text-amber-600">
+                        <Coins className="h-5 w-5" />
+                        Koin Anda: {(currentUser.coins || 0).toLocaleString()}
                     </div>
                 )}
             </header>

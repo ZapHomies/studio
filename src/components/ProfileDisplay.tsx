@@ -2,12 +2,12 @@
 
 import { useContext, useMemo } from 'react';
 import { UserDataContext } from '@/context/UserDataProvider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Gift, Award, CheckCircle, BarChart2 } from 'lucide-react';
+import { Gift, Award, Coins } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { rewards } from '@/lib/data';
 
@@ -25,26 +25,26 @@ const getTotalXpForLevel = (level: number): number => {
 };
 
 export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
-  const { currentUser, missions } = useContext(UserDataContext);
-
+  const { currentUser } = useContext(UserDataContext);
+  
   const xpForCurrentLevelStart = useMemo(() => {
     if (!currentUser) return 0;
     return getTotalXpForLevel(currentUser.level);
   }, [currentUser?.level]);
+  
+  const activeBorder = useMemo(() => {
+      if (!currentUser) return null;
+      return rewards.find(r => r.type === 'border' && r.id === currentUser.activeBorderId);
+  }, [currentUser?.activeBorderId]);
+
 
   if (!currentUser) {
-    return null; // Atau skeleton loader
+    return null; 
   }
 
-  const completedMissions = missions.filter(m => currentUser.completedMissions.includes(m.id));
-
-  const activeBorder = rewards.find(r => r.type === 'border' && r.id === currentUser.activeBorderId);
-
   const xpForNextLevelStart = currentUser.xpToNextLevel;
-
   const totalXpForThisLevel = xpForNextLevelStart - xpForCurrentLevelStart;
   const xpEarnedThisLevel = currentUser.xp - xpForCurrentLevelStart;
-  
   const progressPercentage = totalXpForThisLevel > 0 ? (xpEarnedThisLevel / totalXpForThisLevel) * 100 : 0;
   
   const AvatarContent = () => (
@@ -80,9 +80,9 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
             </div>
           </div>
         </div>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-4 sm:p-6">
            <div className="w-full">
-              <div className="mb-2 flex justify-between text-md font-medium text-muted-foreground">
+              <div className="mb-2 flex justify-between text-sm font-medium text-muted-foreground">
                 <span>Kemajuan Level</span>
                 <span>
                   {xpEarnedThisLevel.toLocaleString()} / {totalXpForThisLevel.toLocaleString()} XP
@@ -91,20 +91,14 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
               <Progress value={progressPercentage} className="h-4" />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 text-center md:grid-cols-2">
-                <Card className="bg-secondary/50 p-4">
-                    <CardHeader className="p-0">
-                        <CardTitle className="flex items-center justify-center gap-2 text-muted-foreground"><CheckCircle className="h-5 w-5"/>Misi Selesai</CardTitle>
-                    </CardHeader>
-                    <p className="mt-2 font-headline text-3xl sm:text-4xl">{completedMissions.length}</p>
-                </Card>
-                 <Card className="bg-secondary/50 p-4">
-                    <CardHeader className="p-0">
-                        <CardTitle className="flex items-center justify-center gap-2 text-muted-foreground"><BarChart2 className="h-5 w-5"/>Total Misi</CardTitle>
-                    </CardHeader>
-                    <p className="mt-2 font-headline text-3xl sm:text-4xl">{missions.length}</p>
-                </Card>
-            </div>
+            <Card className="bg-secondary/50">
+                <CardHeader className="p-4">
+                    <CardTitle className="flex items-center justify-center gap-2 text-muted-foreground"><Coins className="h-5 w-5"/>Koin Anda</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 text-center">
+                    <p className="font-headline text-4xl sm:text-5xl">{(currentUser.coins || 0).toLocaleString()}</p>
+                </CardContent>
+            </Card>
 
             <Button onClick={onOpenRewards} className="h-12 w-full text-base sm:text-lg">
                 <Gift className="mr-2 h-5 w-5" />

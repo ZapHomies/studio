@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import MissionCompletionDialog from './MissionCompletionDialog';
 import { Badge } from './ui/badge';
-import { CheckCircle, Zap, ChevronsRight, Calendar, Star, Moon, Loader2 } from 'lucide-react';
+import { CheckCircle, Zap, ChevronsRight, Calendar, Star, Moon, Loader2, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { mission: Mission, onAction: (mission: Mission) => void, onOpenDialog: (mission: Mission) => void, isCompleting: boolean }) => {
@@ -62,7 +62,11 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
             <CardContent className="flex-grow">
                 <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="border-accent text-accent-foreground bg-accent/20">
-                    {mission.xp} XP
+                      {mission.xp} XP
+                    </Badge>
+                     <Badge variant="outline" className="border-amber-500 text-amber-700 bg-amber-400/20">
+                      <Coins className="mr-1 h-3 w-3" />
+                      {mission.coins}
                     </Badge>
                     {mission.bonusXp && (
                     <Badge variant="default" className="bg-amber-500 text-white hover:bg-amber-600">
@@ -101,7 +105,7 @@ export default function MissionList() {
     await completeMission(mission.id);
     toast({
       title: 'Misi Selesai!',
-      description: `Anda mendapatkan ${mission.xp} XP untuk menyelesaikan "${mission.title}".`,
+      description: `Anda mendapatkan ${mission.xp} XP dan ${mission.coins} Koin untuk menyelesaikan "${mission.title}".`,
       variant: 'success'
     });
     setCompletingMissionId(null);

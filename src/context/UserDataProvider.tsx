@@ -33,7 +33,6 @@ const NUM_MONTHLY = 2;
 
 const getTotalXpForLevel = (level: number): number => {
     if (level <= 1) return 0;
-    // The cost to get from level (i-1) to i is (i-1) * 150
     let totalXp = 0;
     for (let i = 2; i <= level; i++) {
         totalXp += (i - 1) * 150;
@@ -44,12 +43,10 @@ const getTotalXpForLevel = (level: number): number => {
 const getLevelForXp = (xp: number): number => {
     let level = 1;
     while (true) {
-        // Check against the XP required for the *next* level
         if (xp < getTotalXpForLevel(level + 1)) {
             return level;
         }
         level++;
-        // Safety break to prevent infinite loops in unforeseen circumstances
         if (level > 1000) return 1000;
     }
 };
@@ -132,6 +129,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const now = new Date();
     let userToUpdate = { 
       ...user, 
+      coins: user.coins || 0,
       unlockedRewardIds: user.unlockedRewardIds || [],
       activeBorderId: user.activeBorderId !== undefined ? user.activeBorderId : null,
     };
@@ -248,6 +246,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             level: 1,
             xp: 0,
             xpToNextLevel: getTotalXpForLevel(2),
+            coins: 100, // Starting coins
             title: getTitleForLevel(1),
             completedMissions: [],
             lastDailyReset: now.toISOString(),
@@ -351,8 +350,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         }
     }
 
-    if (currentUser.xp < reward.cost) {
-        toast({ title: 'XP Tidak Cukup', variant: 'destructive' });
+    if ((currentUser.coins || 0) < reward.cost) {
+        toast({ title: 'Koin Tidak Cukup', variant: 'destructive' });
         return;
     }
     if (currentUser.unlockedRewardIds.includes(rewardId)) {
@@ -362,7 +361,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     const updatedUser = {
         ...currentUser,
-        xp: currentUser.xp - reward.cost,
+        coins: (currentUser.coins || 0) - reward.cost,
         unlockedRewardIds: [...currentUser.unlockedRewardIds, rewardId],
     };
 
@@ -392,9 +391,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!mission || currentUser.completedMissions.includes(missionId)) return;
 
     const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
+    const coinsFromMission = mission.coins || 0;
     const totalXpGained = xpFromMission + bonusXp;
     
     const newXp = currentUser.xp + totalXpGained;
+    const newCoins = (currentUser.coins || 0) + coinsFromMission;
     const oldLevel = currentUser.level;
     const newLevel = getLevelForXp(newXp);
     const leveledUp = newLevel > oldLevel;
@@ -422,6 +423,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       xp: newXp,
       level: newLevel,
       xpToNextLevel: getTotalXpForLevel(newLevel + 1),
+      coins: newCoins,
       title: getTitleForLevel(newLevel),
       completedMissions: [...currentUser.completedMissions, missionId],
     };

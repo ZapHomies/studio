@@ -6,7 +6,7 @@ import { rewards, type Reward } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Gift, Check, Gem, CalendarClock } from 'lucide-react';
+import { Gift, Check, Gem, CalendarClock, Coins } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { themes } from '@/lib/themes';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
@@ -24,7 +24,7 @@ const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean 
     if (!currentUser) return null;
 
     const isUnlocked = currentUser.unlockedRewardIds.includes(reward.id);
-    const canAfford = currentUser.xp >= reward.cost;
+    const canAfford = (currentUser.coins || 0) >= reward.cost;
     const isSeasonal = reward.season === 'Ramadan';
     const isEventActive = isRamadan;
 
@@ -43,8 +43,8 @@ const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean 
         if (!canAfford) {
             toast({
                 variant: 'destructive',
-                title: 'XP Tidak Cukup',
-                description: `Anda memerlukan ${reward.cost.toLocaleString()} XP untuk menukarkan hadiah ini.`,
+                title: 'Koin Tidak Cukup',
+                description: `Anda memerlukan ${reward.cost.toLocaleString()} Koin untuk menukarkan hadiah ini.`,
             });
             return;
         }
@@ -131,7 +131,7 @@ const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean 
                 </>
             ) : reward.cost > 0 ? (
                 <>
-                Tukar ({reward.cost.toLocaleString()} XP)
+                Tukar ({reward.cost.toLocaleString()} Koin)
                 </>
             ) : (
                 <>
@@ -167,14 +167,17 @@ export default function RewardsSheet({ isOpen, onOpenChange }: RewardsSheetProps
                         <Gift className="h-7 w-7 text-primary"/>
                         Toko Hadiah
                     </SheetTitle>
-                    <SheetDescription>
-                        Gunakan XP yang telah Anda kumpulkan untuk menukarkan hadiah eksklusif!
-                    </SheetDescription>
-                    {currentUser && (
-                        <div className="rounded-full bg-amber-400/20 px-4 py-2 text-sm font-bold text-amber-600 inline-block">
-                            XP Anda: {currentUser.xp.toLocaleString()}
-                        </div>
-                    )}
+                    <div className="text-center sm:text-left">
+                        <SheetDescription>
+                            Gunakan Koin yang telah Anda kumpulkan untuk menukarkan hadiah eksklusif!
+                        </SheetDescription>
+                        {currentUser && (
+                            <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-400/20 px-4 py-2 text-sm font-bold text-amber-600">
+                                <Coins className="h-5 w-5" />
+                                Koin Anda: {(currentUser.coins || 0).toLocaleString()}
+                            </div>
+                        )}
+                    </div>
                 </SheetHeader>
                 <ScrollArea className="flex-grow px-6">
                    <div className="space-y-8 py-4">

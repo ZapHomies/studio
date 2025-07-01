@@ -86,7 +86,7 @@ export default function MissionCompletionDialog({
     await completeMission(mission.id);
     toast({
         title: 'Misi Selesai!',
-        description: `Anda mendapatkan ${mission.xp} XP.`,
+        description: `Anda mendapatkan ${mission.xp} XP dan ${mission.coins} Koin.`,
         variant: 'success'
     });
     handleCloseDialog();
@@ -115,7 +115,7 @@ export default function MissionCompletionDialog({
           await completeMission(mission.id, mission.bonusXp);
           toast({
             title: 'Bonus Didapat!',
-            description: `Bukti terverifikasi! Anda mendapatkan total ${mission.xp + (mission.bonusXp || 0)} XP.`,
+            description: `Bukti terverifikasi! Anda mendapatkan total ${mission.xp + (mission.bonusXp || 0)} XP dan ${mission.coins} Koin.`,
             variant: 'success'
           });
           setTimeout(handleCloseDialog, 2000); 

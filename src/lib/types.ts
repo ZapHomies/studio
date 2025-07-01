@@ -1,3 +1,5 @@
+'use client';
+
 export interface User {
   id: string; // Akan menggunakan email untuk kesederhanaan
   name: string;
@@ -7,6 +9,7 @@ export interface User {
   level: number;
   xp: number;
   xpToNextLevel: number;
+  coins: number;
   completedMissions: string[];
   title: string;
   // Timestamps untuk reset misi
@@ -25,6 +28,7 @@ export interface Mission {
   title: string;
   description: string;
   xp: number;
+  coins: number;
   type: 'photo' | 'action' | 'auto';
   bonusXp?: number;
   category: 'Harian' | 'Mingguan' | 'Bulanan';
@@ -34,7 +38,7 @@ export interface Reward {
   id: string;
   name: string;
   description: string;
-  cost: number;
+  cost: number; // Sekarang dalam Koin
   type: 'theme' | 'border';
   value: string; // Nama tema atau kelas CSS untuk border
   style?: 'solid' | 'gradient'; // Menambahkan style untuk membedakan tipe border
