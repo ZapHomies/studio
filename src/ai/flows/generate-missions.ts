@@ -16,7 +16,7 @@ const MissionSchema = z.object({
   title: z.string().describe('Judul misi yang singkat dan menarik dalam Bahasa Indonesia.'),
   description: z.string().describe('Deskripsi singkat tentang apa yang harus dilakukan pengguna dalam Bahasa Indonesia.'),
   xp: z.number().describe('Jumlah XP dasar yang diberikan untuk menyelesaikan misi.'),
-  coins: z.number().describe('Jumlah Koin yang diberikan untuk menyelesaikan misi.'),
+  coins: z.number().describe('Jumlah Koin yang diberikan untuk menyelesaikan misi. HARUS lebih dari 0.'),
   type: z.enum(['photo', 'action']).describe("Tipe misi. 'photo' membutuhkan bukti foto untuk bonus, 'action' hanya perlu ditandai selesai."),
   bonusXp: z.optional(z.number()).describe("Jumlah XP bonus jika pengguna mengunggah bukti foto yang valid. Hanya untuk misi tipe 'photo'."),
   category: z.enum(['Harian', 'Mingguan', 'Bulanan']).describe('Kategori misi.'),
@@ -57,14 +57,15 @@ Anda akan membuat {{count}} misi untuk kategori '{{category}}'.
 PERATURAN PENTING:
 1.  **Bahasa:** Semua teks (judul, deskripsi) HARUS dalam Bahasa Indonesia yang ramah dan memotivasi.
 2.  **Kategori & Hadiah:**
-    *   **Harian:** Tugas kecil. XP: 10-30. Koin: 5-15.
-    *   **Mingguan:** Komitmen lebih besar. XP: 50-100. Koin: 25-50.
-    *   **Bulanan:** Tujuan jangka panjang. XP: 150-300. Koin: 75-150.
+    *   **Harian:** Tugas kecil. XP: 10-30. Koin: 15-30.
+    *   **Mingguan:** Komitmen lebih besar. XP: 50-100. Koin: 75-125.
+    *   **Bulanan:** Tujuan jangka panjang. XP: 150-300. Koin: 200-400.
 3.  **Level Pengguna (saat ini {{level}}):** Sesuaikan kesulitan misi. Untuk level rendah, berikan misi yang lebih mudah. Untuk level tinggi, berikan tantangan yang lebih besar.
 4.  **Tipe Misi:** Hasilkan campuran misi tipe 'action' (tandai selesai) dan 'photo' (unggah foto untuk bonus). JANGAN PERNAH membuat misi tipe 'auto'.
 5.  **Bonus XP:** Untuk misi 'photo', selalu sertakan \`bonusXp\` yang masuk akal (sekitar 50% dari XP dasar). Misi 'photo' tidak memberikan bonus koin.
 6.  **ID Unik:** Pastikan ID unik dan deskriptif (contoh: 'harian-sedekah-subuh'). JANGAN ulangi ID dari daftar ID yang sudah ada: {{{json existingMissionIds}}}.
-7.  **Kreativitas:** Buat misi yang beragam dan tidak monoton. Contoh ide:
+7.  **Hadiah Koin:** Pastikan setiap misi yang Anda buat memiliki hadiah Koin lebih besar dari nol. Hadiah koin TIDAK BOLEH 0.
+8.  **Kreativitas:** Buat misi yang beragam dan tidak monoton. Contoh ide:
     *   Harian: "Ucapkan Shalawat 100x", "Senyum kepada 3 orang", "Mendoakan orang tua", "Belajar 1 kosakata Arab".
     *   Mingguan: "Salat di masjid pada hari Jumat", "Menjenguk teman yang sakit", "Membaca Surah Al-Kahfi".
     *   Bulanan: "Menyelesaikan 1 Juz Al-Quran", "Puasa Senin-Kamis dua kali", "Memberi makan anak yatim".
