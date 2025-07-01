@@ -1,4 +1,4 @@
-import { User, Mission } from './types';
+import { User, Mission, Reward } from './types';
 
 export const avatarPool: { url: string; hint: string }[] = [
   { url: 'https://placehold.co/128x128/1abc9c/ffffff.png', hint: 'muslim man turquoise' },
@@ -17,5 +17,48 @@ export const staticMissions: Mission[] = [
     xp: 150, // XP dasar, bisa bertambah
     type: 'auto',
     category: 'Bulanan',
+  },
+];
+
+export const rewards: Reward[] = [
+  {
+    id: 'theme-sunset',
+    name: 'Tema Senja',
+    description: 'Bawa kehangatan senja ke dalam aplikasi Anda.',
+    cost: 2500,
+    type: 'theme',
+    value: 'Sunset',
+  },
+  {
+    id: 'theme-royal',
+    name: 'Tema Royal',
+    description: 'Tampilan elegan dengan nuansa biru tua dan emas.',
+    cost: 3000,
+    type: 'theme',
+    value: 'Royal',
+  },
+  {
+    id: 'border-silver',
+    name: 'Bingkai Perak',
+    description: 'Bingkai perak berkilau untuk avatar Anda.',
+    cost: 500,
+    type: 'border',
+    value: 'border-slate-400',
+  },
+  {
+    id: 'border-gold',
+    name: 'Bingkai Emas',
+    description: 'Tunjukkan pencapaian Anda dengan bingkai emas.',
+    cost: 1000,
+    type: 'border',
+    value: 'border-amber-400',
+  },
+  {
+    id: 'border-amethyst',
+    name: 'Bingkai Kecubung',
+    description: 'Bingkai ungu misterius dan menawan.',
+    cost: 1500,
+    type: 'border',
+    value: 'border-fuchsia-600',
   },
 ];

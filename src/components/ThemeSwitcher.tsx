@@ -1,16 +1,34 @@
 'use client';
 
+import { useContext, useMemo } from 'react';
 import { useTheme } from '@/context/ThemeProvider';
-import { themes } from '@/lib/themes';
+import { themes, type Theme } from '@/lib/themes';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
+import { UserDataContext } from '@/context/UserDataProvider';
+import { rewards as allRewards } from '@/lib/data';
 
 export default function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
+  const { currentUser } = useContext(UserDataContext);
+
+  const availableThemes = useMemo(() => {
+    if (!currentUser) {
+      return themes.filter(t => ['Default', 'Midnight', 'Oasis', 'Rosewater', 'Emerald'].includes(t.name));
+    }
+    
+    const unlockedThemeRewards = allRewards.filter(r => r.type === 'theme' && currentUser.unlockedRewardIds.includes(r.id));
+    const unlockedThemeNames = unlockedThemeRewards.map(r => r.value);
+    
+    const defaultThemes = ['Default', 'Midnight', 'Oasis', 'Rosewater', 'Emerald'];
+    const allAvailableNames = new Set([...defaultThemes, ...unlockedThemeNames]);
+
+    return themes.filter(t => allAvailableNames.has(t.name));
+  }, [currentUser]);
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
-      {themes.map((t) => (
+      {availableThemes.map((t) => (
         <div key={t.name}>
           <button
             onClick={() => setTheme(t.name)}

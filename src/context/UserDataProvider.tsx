@@ -1,9 +1,9 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { type User, type Mission } from '@/lib/types';
+import { type User, type Mission, type Reward } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { avatarPool, staticMissions } from '@/lib/data';
+import { avatarPool, staticMissions, rewards as allRewards } from '@/lib/data';
 import { useRouter, usePathname } from 'next/navigation';
 import { isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { generateMissions } from '@/ai/flows/generate-missions';
@@ -23,6 +23,8 @@ interface UserDataContextType {
   register: (name: string, email: string, password: string) => Promise<void>;
   updateUser: (updatedData: Partial<Pick<User, 'name' | 'avatarUrl'>>) => void;
   markWelcomeAsSeen: () => void;
+  redeemReward: (rewardId: string) => void;
+  setActiveBorder: (borderId: string | null) => void;
 }
 
 const NUM_DAILY = 4;
@@ -37,13 +39,21 @@ export const UserDataContext = createContext<UserDataContextType>({
   isLoading: true,
   completeMission: async () => {},
   login: async () => {},
-  logout: () => {},
+  logout: async () => {},
   register: async () => {},
   updateUser: () => {},
   markWelcomeAsSeen: () => {},
+  redeemReward: () => {},
+  setActiveBorder: () => {},
 });
 
 const getTitleForLevel = (level: number): string => {
+  if (level >= 50) return 'Waliyullah Muta\'allim';
+  if (level >= 45) return 'Ahli Zikir';
+  if (level >= 40) return 'Duta Kebaikan';
+  if (level >= 35) return 'Ksatria Subuh';
+  if (level >= 30) return 'Penjaga Fajar';
+  if (level >= 25) return 'Mutiara Hikmah';
   if (level >= 20) return 'Bintang Hidayah';
   if (level >= 15) return 'Sahabat Al-Quran';
   if (level >= 10) return 'Pencari Ilmu';
@@ -87,7 +97,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const weeklyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_WEEKLY, category: 'Mingguan' });
       const monthlyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
       
-      const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyPromise]);
+      const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyResult]);
       
       const combinedMissions = [...staticMissions, ...dailyResult.missions, ...weeklyResult.missions, ...monthlyResult.missions];
       
@@ -97,7 +107,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const processUserSession = useCallback(async (user: User, currentMissions: Mission[], allUsers: User[]): Promise<{ updatedUser: User, updatedMissions: Mission[] }> => {
     const now = new Date();
-    let userToUpdate = { ...user };
+    let userToUpdate = { 
+      ...user, 
+      unlockedRewardIds: user.unlockedRewardIds || [],
+      activeBorderId: user.activeBorderId !== undefined ? user.activeBorderId : null,
+    };
     let missionsToUpdate = [...currentMissions];
 
     let missionsHaveChanged = false;
@@ -142,10 +156,17 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (sessionId && users.length > 0) {
       const userFromSession = users.find(u => u.id === sessionId);
       if (userFromSession) {
-        const { updatedUser, updatedMissions } = await processUserSession(userFromSession, storedMissions, users);
-        setAllUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-        setCurrentUser(updatedUser);
-        setMissions(updatedMissions);
+        try {
+          const { updatedUser, updatedMissions } = await processUserSession(userFromSession, storedMissions, users);
+          setAllUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+          setCurrentUser(updatedUser);
+          setMissions(updatedMissions);
+        } catch (error) {
+          console.error("Gagal memproses sesi pengguna, memuat ulang tanpa pembaruan misi:", error);
+          toast({ variant: 'destructive', title: 'Gagal Menyinkronkan Misi', description: 'Memuat data misi yang tersimpan.'});
+          setCurrentUser(userFromSession);
+          setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
+        }
       } else {
         sessionStorage.removeItem(SESSION_KEY);
       }
@@ -154,7 +175,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
        setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
     }
     setIsLoading(false);
-  }, [loadDataFromStorage, processUserSession]);
+  }, [loadDataFromStorage, processUserSession, toast]);
 
   useEffect(() => {
     rehydrateSession();
@@ -199,6 +220,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             lastWeeklyReset: now.toISOString(),
             lastMonthlyReset: now.toISOString(),
             hasSeenWelcome: false,
+            unlockedRewardIds: [],
+            activeBorderId: null,
         };
 
         const newMissions = await generateNewUserMissions(1);
@@ -228,16 +251,22 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const userToLogin = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (userToLogin && userToLogin.password === password) {
-      const userWithWelcomeFlag = { ...userToLogin, hasSeenWelcome: userToLogin.hasSeenWelcome ?? true };
-      const { updatedUser, updatedMissions } = await processUserSession(userWithWelcomeFlag, storedMissions, users);
-      
-      const updatedUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
-      setAllUsers(updatedUsers);
-      setCurrentUser(updatedUser);
-      setMissions(updatedMissions);
-      
-      if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, updatedUser.id);
-      toast({ title: `Selamat Datang Kembali, ${userToLogin.name}!`, variant: 'success' });
+      try {
+        const { updatedUser, updatedMissions } = await processUserSession(userToLogin, storedMissions, users);
+        
+        const updatedUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
+        setAllUsers(updatedUsers);
+        setCurrentUser(updatedUser);
+        setMissions(updatedMissions);
+        
+        if (typeof window !== 'undefined') sessionStorage.setItem(SESSION_KEY, updatedUser.id);
+        toast({ title: `Selamat Datang Kembali, ${userToLogin.name}!`, variant: 'success' });
+      } catch (error) {
+        console.error("Gagal memproses sesi login, memuat ulang tanpa pembaruan misi:", error);
+        toast({ variant: 'destructive', title: 'Gagal Menyinkronkan Misi', description: 'Memuat data yang ada.'});
+        setCurrentUser(userToLogin);
+        setMissions(storedMissions);
+      }
     } else {
       toast({ title: 'Login Gagal', description: 'Email atau password salah.', variant: 'destructive' });
     }
@@ -247,7 +276,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     if (typeof window !== 'undefined') sessionStorage.removeItem(SESSION_KEY);
     setCurrentUser(null);
-    router.push('/');
   };
 
   const updateUser = (updatedData: Partial<Pick<User, 'name' | 'avatarUrl'>>) => {
@@ -264,6 +292,48 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const markWelcomeAsSeen = () => {
     if (!currentUser) return;
     const updatedUser = { ...currentUser, hasSeenWelcome: true };
+    setCurrentUser(updatedUser);
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
+  const redeemReward = (rewardId: string) => {
+    if (!currentUser) return;
+
+    const reward = allRewards.find(r => r.id === rewardId);
+    if (!reward) {
+        toast({ title: 'Hadiah Tidak Ditemukan', variant: 'destructive' });
+        return;
+    }
+    if (currentUser.xp < reward.cost) {
+        toast({ title: 'XP Tidak Cukup', variant: 'destructive' });
+        return;
+    }
+    if (currentUser.unlockedRewardIds.includes(rewardId)) {
+        toast({ title: 'Hadiah Sudah Dimiliki', variant: 'default' });
+        return;
+    }
+
+    const updatedUser = {
+        ...currentUser,
+        xp: currentUser.xp - reward.cost,
+        unlockedRewardIds: [...currentUser.unlockedRewardIds, rewardId],
+    };
+
+    setCurrentUser(updatedUser);
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+
+    toast({ title: 'Hadiah Berhasil Ditukar!', description: `Anda membuka "${reward.name}".`, variant: 'success' });
+  };
+  
+  const setActiveBorder = (borderId: string | null) => {
+    if (!currentUser) return;
+
+    if (borderId && !currentUser.unlockedRewardIds.includes(borderId)) {
+        toast({ title: 'Bingkai Belum Dimiliki', description: 'Buka bingkai ini di Toko Hadiah terlebih dahulu.', variant: 'destructive' });
+        return;
+    }
+
+    const updatedUser = { ...currentUser, activeBorderId: borderId };
     setCurrentUser(updatedUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
@@ -329,7 +399,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const value = { currentUser, missions, allUsers, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser, markWelcomeAsSeen };
+  const value = { currentUser, missions, allUsers, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser, markWelcomeAsSeen, redeemReward, setActiveBorder };
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
 };

@@ -15,6 +15,9 @@ export interface User {
   lastMonthlyReset: string;
   // Flag untuk onboarding
   hasSeenWelcome: boolean;
+  // Fitur Hadiah
+  unlockedRewardIds: string[];
+  activeBorderId: string | null;
 }
 
 export interface Mission {
@@ -25,4 +28,13 @@ export interface Mission {
   type: 'photo' | 'action' | 'auto';
   bonusXp?: number;
   category: 'Harian' | 'Mingguan' | 'Bulanan';
+}
+
+export interface Reward {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  type: 'theme' | 'border';
+  value: string; // Nama tema atau kelas CSS untuk border
 }

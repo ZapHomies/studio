@@ -8,6 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { LogOut, Award, CheckCircle, BarChart2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { rewards } from '@/lib/data';
 
 export default function ProfileDisplay() {
   const { currentUser, missions, logout } = useContext(UserDataContext);
@@ -19,12 +21,15 @@ export default function ProfileDisplay() {
   const progressPercentage = (currentUser.xp / currentUser.xpToNextLevel) * 100;
   const completedMissions = missions.filter(m => currentUser.completedMissions.includes(m.id));
 
+  const activeBorder = rewards.find(r => r.id === currentUser.activeBorderId);
+  const borderClass = activeBorder ? activeBorder.value : 'border-accent';
+
   return (
     <div className="space-y-8">
       <Card className="overflow-hidden border-2 border-primary/20 shadow-lg">
         <div className="bg-gradient-to-br from-primary/10 to-card p-6 sm:p-8">
           <div className="flex flex-col items-center gap-6 text-center">
-            <Avatar className="h-28 w-28 border-4 border-accent shadow-xl sm:h-32 sm:w-32">
+            <Avatar className={cn("h-28 w-28 border-4 shadow-xl sm:h-32 sm:w-32", borderClass)}>
               <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
               <AvatarFallback className="text-5xl">{currentUser.name.charAt(0)}</AvatarFallback>
             </Avatar>

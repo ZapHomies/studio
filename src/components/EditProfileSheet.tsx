@@ -15,9 +15,9 @@ import {
   SheetClose
 } from '@/components/ui/sheet';
 import { UserDataContext } from '@/context/UserDataProvider';
-import { avatarPool } from '@/lib/data';
+import { avatarPool, rewards as allRewards } from '@/lib/data';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Sparkles, Loader2 } from 'lucide-react';
+import { CheckCircle, Sparkles, Loader2, Gem } from 'lucide-react';
 import { generateAvatar } from '@/ai/flows/generate-avatar';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,20 +28,24 @@ interface EditProfileSheetProps {
 }
 
 export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSheetProps) {
-  const { currentUser, updateUser } = useContext(UserDataContext);
+  const { currentUser, updateUser, setActiveBorder } = useContext(UserDataContext);
   const { toast } = useToast();
   
   const [name, setName] = useState(currentUser?.name || '');
   const [selectedAvatarUrl, setSelectedAvatarUrl] = useState(currentUser?.avatarUrl || '');
+  const [selectedBorderId, setSelectedBorderId] = useState(currentUser?.activeBorderId || null);
   
   const [generationPrompt, setGenerationPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
 
+  const unlockedBorders = allRewards.filter(r => r.type === 'border' && currentUser?.unlockedRewardIds.includes(r.id));
+
   useEffect(() => {
     if (isOpen && currentUser) {
       setName(currentUser.name);
       setSelectedAvatarUrl(currentUser.avatarUrl);
+      setSelectedBorderId(currentUser.activeBorderId);
       setGeneratedAvatarUrl(null);
       setGenerationPrompt('');
     }
@@ -50,6 +54,9 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
   const handleSave = () => {
     if (!currentUser) return;
     updateUser({ name, avatarUrl: selectedAvatarUrl });
+    if (selectedBorderId !== currentUser.activeBorderId) {
+      setActiveBorder(selectedBorderId);
+    }
     onOpenChange(false);
   };
 
@@ -82,7 +89,7 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
         <SheetHeader>
           <SheetTitle className="font-headline">Ubah Profil</SheetTitle>
           <SheetDescription>
-            Perbarui nama Anda, pilih avatar, atau buat avatar baru menggunakan AI.
+            Perbarui nama, avatar, dan bingkai profil Anda.
           </SheetDescription>
         </SheetHeader>
         <div className="flex-grow space-y-6 overflow-y-auto py-4 pr-6">
@@ -117,9 +124,55 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
               </Button>
             </div>
           </div>
+          
+           <div className="space-y-3">
+            <Label>Pilih Bingkai Avatar</Label>
+            <div className="grid grid-cols-3 gap-4 pt-2">
+              {/* No Border Option */}
+              <div
+                className="relative cursor-pointer aspect-square"
+                onClick={() => setSelectedBorderId(null)}
+              >
+                  <div className={cn(
+                      'flex h-full w-full items-center justify-center rounded-full border-4 bg-muted text-muted-foreground',
+                      selectedBorderId === null ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                  )}>
+                    <Gem className="h-8 w-8 opacity-50"/>
+                  </div>
+                  <p className="mt-1 text-center text-xs font-medium">Tanpa Bingkai</p>
+                  {selectedBorderId === null && (
+                    <div className="absolute bottom-6 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background">
+                      <CheckCircle className="h-5 w-5" />
+                    </div>
+                  )}
+              </div>
+
+              {/* Unlocked Borders */}
+              {unlockedBorders.map((border) => (
+                 <div
+                  key={border.id}
+                  className="relative cursor-pointer aspect-square"
+                  onClick={() => setSelectedBorderId(border.id)}
+                >
+                    <div className={cn(
+                        'flex h-full w-full items-center justify-center rounded-full border-4 bg-muted',
+                        selectedBorderId === border.id ? 'border-primary' : border.value
+                    )}>
+                        <Gem className={cn("h-8 w-8", border.value.replace('border-','text-'))} />
+                    </div>
+                   <p className="mt-1 text-center text-xs font-medium">{border.name}</p>
+                   {selectedBorderId === border.id && (
+                    <div className="absolute bottom-6 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background">
+                      <CheckCircle className="h-5 w-5" />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
 
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label>Pilih Avatar</Label>
             <div className="grid grid-cols-3 gap-4 pt-2">
               {generatedAvatarUrl && (
