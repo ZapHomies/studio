@@ -217,63 +217,68 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const completeMission = async (missionId: string, bonusXp: number = 0, overrideXp?: number) => {
-    let updatedUser: User | null = null;
-    let finalMissions = [...missions];
-    let leveledUp = false;
-    let newTitle = user.title;
-
     const mission = missions.find((m) => m.id === missionId);
     if (!mission || user.completedMissions.includes(missionId)) return;
 
-    // Perform state updates in a functional way
-    setUser(currentUser => {
-        const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
-        const totalXpGained = xpFromMission + bonusXp;
-        
-        let tempUser = { ...currentUser };
-        tempUser.xp += totalXpGained;
-        
-        while (tempUser.xp >= tempUser.xpToNextLevel) {
-          leveledUp = true;
-          tempUser.xp -= tempUser.xpToNextLevel;
-          tempUser.level += 1;
-          tempUser.xpToNextLevel = tempUser.level * 150;
-          newTitle = getTitleForLevel(tempUser.level);
-        }
-        tempUser.title = newTitle;
-        tempUser.completedMissions = [...currentUser.completedMissions, missionId];
-        updatedUser = tempUser;
-        return tempUser;
-    });
+    // 1. Calculate new user state first
+    const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
+    const totalXpGained = xpFromMission + bonusXp;
 
-    // Handle side-effects after state update
+    let leveledUp = false;
+    let newXp = user.xp + totalXpGained;
+    let newLevel = user.level;
+    let newXpToNextLevel = user.xpToNextLevel;
+
+    while (newXp >= newXpToNextLevel) {
+      leveledUp = true;
+      newXp -= newXpToNextLevel;
+      newLevel += 1;
+      newXpToNextLevel = newLevel * 150;
+    }
+
+    const newTitle = getTitleForLevel(newLevel);
+    
+    const updatedUser: User = {
+      ...user,
+      xp: newXp,
+      level: newLevel,
+      xpToNextLevel: newXpToNextLevel,
+      title: newTitle,
+      completedMissions: [...user.completedMissions, missionId],
+    };
+
+    let updatedMissions = [...missions];
+
+    // 2. If it's a daily mission, fetch a replacement
     if (mission.category === 'Harian') {
-        const currentMissionIds = finalMissions.map(m => m.id);
-        const { missions: newMissions } = await generateMissions({
-            level: updatedUser!.level,
-            existingMissionIds: currentMissionIds,
-            count: 1,
-            category: 'Harian'
-        });
-        
-        if (newMissions && newMissions.length > 0) {
-            const missionIndex = finalMissions.findIndex(m => m.id === missionId);
-            if(missionIndex !== -1) {
-                finalMissions[missionIndex] = newMissions[0];
-            }
-        }
+      const currentMissionIds = updatedMissions.map(m => m.id).filter(id => id !== missionId);
+      
+      const { missions: newMissions } = await generateMissions({
+          level: updatedUser.level,
+          existingMissionIds: currentMissionIds,
+          count: 1,
+          category: 'Harian'
+      });
+      
+      // 3. Replace the completed mission in the list
+      if (newMissions && newMissions.length > 0) {
+          const missionIndex = updatedMissions.findIndex(m => m.id === missionId);
+          if (missionIndex !== -1) {
+              updatedMissions[missionIndex] = newMissions[0];
+          }
+      }
     }
     
-    if (updatedUser) {
-        saveData(updatedUser, finalMissions);
+    // 4. Save both user and missions state together
+    saveData(updatedUser, updatedMissions);
 
-        if (leveledUp) {
-            toast({
-                title: 'Naik Level!',
-                description: `Selamat! Anda telah mencapai Level ${updatedUser.level} dan meraih gelar "${newTitle}".`,
-                variant: 'success',
-            });
-        }
+    // 5. Show level up toast if needed
+    if (leveledUp) {
+        toast({
+            title: 'Naik Level!',
+            description: `Selamat! Anda telah mencapai Level ${updatedUser.level} dan meraih gelar "${newTitle}".`,
+            variant: 'success',
+        });
     }
   };
   
