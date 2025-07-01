@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect, useContext } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { provideRecitationFeedback } from '@/ai/flows/provide-recitation-feedback';
 import { Mic, Square, Loader2, BookOpen } from 'lucide-react';
