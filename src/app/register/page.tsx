@@ -47,10 +47,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <header className="mb-8 flex flex-col items-center justify-center text-center">
           <KaabaIcon className="h-12 w-12 text-primary" />
-          <h1 className="ml-4 mt-4 font-headline text-5xl font-bold text-primary">
+          <h1 className="ml-4 mt-4 font-headline text-4xl font-bold text-primary sm:text-5xl">
             Muslim Mission
           </h1>
-           <p className="text-center text-lg text-muted-foreground mt-2">
+           <p className="mt-2 text-center text-base text-muted-foreground sm:text-lg">
             Mulailah perjalanan iman Anda.
           </p>
         </header>

@@ -48,10 +48,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <header className="mb-8 flex flex-col items-center justify-center text-center">
           <KaabaIcon className="h-16 w-16 text-primary" />
-          <h1 className="ml-4 mt-4 font-headline text-5xl font-bold text-primary">
+          <h1 className="ml-4 mt-4 font-headline text-4xl font-bold text-primary sm:text-5xl">
             Muslim Mission
           </h1>
-           <p className="mt-2 text-center text-lg text-muted-foreground">
+           <p className="mt-2 text-center text-base text-muted-foreground sm:text-lg">
             Selamat datang kembali!
           </p>
         </header>

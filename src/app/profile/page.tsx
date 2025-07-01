@@ -27,7 +27,7 @@ export default function ProfilePage() {
       
       <Card className="shadow-lg">
           <CardHeader>
-              <CardTitle className="flex items-center gap-3 font-headline text-3xl">
+              <CardTitle className="flex items-center gap-3 font-headline text-2xl sm:text-3xl">
                 <Palette />
                 Ganti Tema
               </CardTitle>

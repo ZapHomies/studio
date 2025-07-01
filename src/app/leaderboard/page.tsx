@@ -20,7 +20,7 @@ function LeaderboardRow({ user, rank }: { user: User; rank: number }) {
     if (rank === 1) return <Trophy className="h-6 w-6 text-amber-500" />;
     if (rank === 2) return <Trophy className="h-6 w-6 text-slate-500" />;
     if (rank === 3) return <Trophy className="h-6 w-6 text-amber-700" />;
-    return <span className="text-lg font-medium text-muted-foreground">{rank}</span>;
+    return <span className="text-base font-medium text-muted-foreground sm:text-lg">{rank}</span>;
   }
 
   return (
@@ -28,18 +28,18 @@ function LeaderboardRow({ user, rank }: { user: User; rank: number }) {
       <TableCell className="w-16 text-center">{getRankIndicator(rank)}</TableCell>
       <TableCell>
         <div className="flex items-center gap-4">
-          <Avatar className="h-12 w-12 border-2 border-primary/50">
+          <Avatar className="h-10 w-10 border-2 border-primary/50 sm:h-12 sm:w-12">
             <AvatarImage src={user.avatarUrl} alt={user.name} />
             <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <div className="font-bold text-lg">{user.name}</div>
+            <div className="text-base font-bold sm:text-lg">{user.name}</div>
             <div className="text-sm text-muted-foreground">{user.title}</div>
           </div>
         </div>
       </TableCell>
-      <TableCell className="text-center font-medium text-lg">{user.level}</TableCell>
-      <TableCell className="text-right font-bold text-primary text-lg">{user.xp.toLocaleString()} XP</TableCell>
+      <TableCell className="text-center font-medium text-base sm:text-lg">{user.level}</TableCell>
+      <TableCell className="text-right font-bold text-primary text-base sm:text-lg">{user.xp.toLocaleString()} XP</TableCell>
     </TableRow>
   );
 }
@@ -55,8 +55,8 @@ export default function LeaderboardPage() {
     <div className="container mx-auto max-w-4xl space-y-8 px-4 py-8">
       <header className="flex flex-col items-center justify-center text-center">
         <Trophy className="h-16 w-16 text-amber-500" />
-        <h1 className="mt-4 font-headline text-5xl font-bold text-primary">Papan Peringkat</h1>
-        <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
+        <h1 className="mt-4 font-headline text-4xl font-bold text-primary sm:text-5xl">Papan Peringkat</h1>
+        <p className="mt-2 max-w-2xl text-base text-muted-foreground sm:text-lg">
           Lihat peringkatmu di antara para pejuang iman lainnya. Terus kumpulkan XP!
         </p>
       </header>
