@@ -17,7 +17,7 @@ import { type Mission } from '@/lib/types';
 import { UserDataContext } from '@/context/UserDataProvider';
 import { verifyMissionPhoto } from '@/ai/flows/verify-mission-photo';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Loader2, CheckCircle, XCircle, Zap, Send } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Zap, Send, Camera, Trash2 } from 'lucide-react';
 
 interface MissionCompletionDialogProps {
   mission: Mission | null;
@@ -41,7 +41,7 @@ export default function MissionCompletionDialog({
   const { toast } = useToast();
   const { completeMission } = useContext(UserDataContext);
 
-  const resetState = () => {
+  const resetLocalState = () => {
     setFile(null);
     setPreview(null);
     setStatus('idle');
@@ -50,6 +50,9 @@ export default function MissionCompletionDialog({
     if (fileInputRef.current) {
         fileInputRef.current.value = '';
     }
+  };
+
+  const handleCloseDialog = () => {
     onOpenChange(false);
   };
 
@@ -66,6 +69,16 @@ export default function MissionCompletionDialog({
       setVerificationFeedback('');
     }
   };
+  
+  const handleRemovePhoto = () => {
+    setFile(null);
+    setPreview(null);
+    setStatus('idle');
+    setVerificationFeedback('');
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  }
 
   const handleCompleteWithoutProof = async () => {
     if (!mission) return;
@@ -76,7 +89,7 @@ export default function MissionCompletionDialog({
         description: `Anda mendapatkan ${mission.xp} XP.`,
         variant: 'success'
     });
-    resetState();
+    handleCloseDialog();
   };
 
   const handleVerify = async () => {
@@ -105,7 +118,7 @@ export default function MissionCompletionDialog({
             description: `Bukti terverifikasi! Anda mendapatkan total ${mission.xp + (mission.bonusXp || 0)} XP.`,
             variant: 'success'
           });
-          setTimeout(resetState, 2000); 
+          setTimeout(handleCloseDialog, 2000); 
         } else {
           setStatus('error');
           toast({
@@ -138,16 +151,7 @@ export default function MissionCompletionDialog({
   useEffect(() => {
     if (!isOpen) {
         // Give animations time to finish before resetting state
-        setTimeout(() => {
-            setStatus('idle');
-            setFile(null);
-            setPreview(null);
-            setVerificationFeedback('');
-            setIsCompleting(false);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-        }, 300);
+        setTimeout(resetLocalState, 300);
     }
   }, [isOpen]);
 
@@ -165,25 +169,34 @@ export default function MissionCompletionDialog({
           <DialogDescription>{mission?.description}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="space-y-2">
-            <label htmlFor="mission-photo" className="text-sm font-medium">
-              Unggah Bukti (Opsional untuk Bonus XP)
-            </label>
             <Input
               id="mission-photo"
               type="file"
               accept="image/*"
+              capture="environment"
               ref={fileInputRef}
               onChange={handleFileChange}
-              className="cursor-pointer"
+              className="hidden"
               disabled={isBusy}
             />
-          </div>
-          {preview && (
-            <div className="relative mt-2 aspect-video w-full overflow-hidden rounded-md border">
-              <Image src={preview} alt="Pratinjau bukti misi" layout="fill" objectFit="cover" />
-            </div>
-          )}
+
+            {preview ? (
+                <div className="space-y-2">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-md border">
+                        <Image src={preview} alt="Pratinjau bukti misi" layout="fill" objectFit="cover" />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleRemovePhoto} disabled={isBusy} className="w-full">
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Ambil Ulang Foto
+                    </Button>
+                </div>
+            ) : (
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isBusy}>
+                    <Camera className="mr-2 h-4 w-4" />
+                    Ambil Foto Bukti (Bonus XP)
+                </Button>
+            )}
+
           {status !== 'idle' && verificationFeedback && (
              <Alert variant={status === 'success' ? 'success' : 'destructive'} className="mt-4">
                {status === 'success' && <CheckCircle className="h-4 w-4" />}
