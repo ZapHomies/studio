@@ -130,8 +130,14 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(false);
     };
     
-    loadAndResetData();
-  }, [saveData]);
+    // Only run the complex data loading/reset logic if not on login/register pages
+    // and not already authenticated in the current session.
+    if (!isAuthenticated && pathname !== '/' && pathname !== '/register') {
+      loadAndResetData();
+    } else {
+      setIsLoading(false);
+    }
+  }, [saveData, pathname, isAuthenticated]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && pathname !== '/register' && pathname !== '/') {
@@ -159,9 +165,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (storedDataRaw) {
         try {
             const storedData = JSON.parse(storedDataRaw);
-            if (storedData.user.name.toLowerCase() === name.toLowerCase()) {
+            if (storedData.user && storedData.user.name.toLowerCase() === name.toLowerCase()) {
+                // Load data into state and set authenticated
+                setUser(storedData.user);
+                setMissions(storedData.missions || []);
                 setIsAuthenticated(true);
-                window.location.reload();
+                // The routing useEffect will handle the redirect. No reload needed.
                 return;
             }
         } catch (error) {
@@ -170,7 +179,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }
     toast({
         title: 'Login Gagal',
-        description: 'Pengguna tidak ditemukan. Silakan daftar terlebih dahulu.',
+        description: 'Pengguna tidak ditemukan. Silakan daftar atau periksa kembali nama Anda.',
         variant: 'destructive',
     });
   };
@@ -191,7 +200,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     saveData(newUser, newMissions);
     setIsAuthenticated(true);
     setIsLoading(false);
-    router.push('/missions');
+    // Routing useEffect will handle the redirect.
   };
   
   const logout = () => {
@@ -257,6 +266,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             const missionIndex = updatedMissions.findIndex(m => m.id === missionId);
             if (missionIndex !== -1) {
                 updatedMissions[missionIndex] = newMissions[0];
+            } else {
+                // Failsafe: if the mission somehow wasn't found, add the new one anyway
+                updatedMissions.push(newMissions[0]);
             }
         }
       } catch (error) {
@@ -265,8 +277,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // --- Part 3: Set all state together ---
-    setUser(updatedUser);
-    setMissions(updatedMissions);
+    saveData(updatedUser, updatedMissions);
 
     // --- Part 4: Show level up toast if needed ---
     if (leveledUp) {
