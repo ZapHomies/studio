@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Gift, Award, Coins } from 'lucide-react';
+import { Gift, Award, Coins, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { rewards } from '@/lib/data';
 
@@ -27,21 +27,20 @@ const getTotalXpForLevel = (level: number): number => {
 export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
   const { currentUser } = useContext(UserDataContext);
   
-  const xpForCurrentLevelStart = useMemo(() => {
-    if (!currentUser) return 0;
-    return getTotalXpForLevel(currentUser.level);
-  }, [currentUser?.level]);
-  
   const activeBorder = useMemo(() => {
       if (!currentUser) return null;
       return rewards.find(r => r.type === 'border' && r.id === currentUser.activeBorderId);
   }, [currentUser?.activeBorderId]);
-
+  
+  const xpForCurrentLevelStart = useMemo(() => {
+    if (!currentUser) return 0;
+    return getTotalXpForLevel(currentUser.level);
+  }, [currentUser?.level]);
 
   if (!currentUser) {
     return null; 
   }
-
+  
   const xpForNextLevelStart = currentUser.xpToNextLevel;
   const totalXpForThisLevel = xpForNextLevelStart - xpForCurrentLevelStart;
   const xpEarnedThisLevel = currentUser.xp - xpForCurrentLevelStart;
@@ -91,14 +90,24 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
               <Progress value={progressPercentage} className="h-4" />
             </div>
 
-            <Card className="bg-secondary/50">
-                <CardHeader className="p-4">
-                    <CardTitle className="flex items-center justify-center gap-2 text-muted-foreground"><Coins className="h-5 w-5"/>Koin Anda</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0 text-center">
-                    <p className="font-headline text-4xl sm:text-5xl">{(currentUser.coins || 0).toLocaleString()}</p>
-                </CardContent>
-            </Card>
+            <div className="grid grid-cols-2 gap-4">
+               <Card className="bg-secondary/50">
+                  <CardHeader className="p-4 pb-2">
+                      <CardTitle className="flex items-center justify-center gap-2 text-sm font-semibold text-muted-foreground"><Coins className="h-4 w-4"/>Koin Anda</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 text-center">
+                      <p className="font-headline text-3xl sm:text-4xl">{(currentUser.coins || 0).toLocaleString()}</p>
+                  </CardContent>
+               </Card>
+               <Card className="bg-secondary/50">
+                  <CardHeader className="p-4 pb-2">
+                      <CardTitle className="flex items-center justify-center gap-2 text-sm font-semibold text-muted-foreground"><CheckCircle className="h-4 w-4"/>Misi Selesai</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 text-center">
+                      <p className="font-headline text-3xl sm:text-4xl">{currentUser.completedMissions.length}</p>
+                  </CardContent>
+               </Card>
+            </div>
 
             <Button onClick={onOpenRewards} className="h-12 w-full text-base sm:text-lg">
                 <Gift className="mr-2 h-5 w-5" />
