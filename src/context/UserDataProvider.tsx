@@ -117,7 +117,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const weeklyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_WEEKLY, category: 'Mingguan' });
       const monthlyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
       
-      const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyResult]);
+      const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyPromise]);
       
       const combinedMissions = [...staticMissions, ...dailyResult.missions, ...weeklyResult.missions, ...monthlyResult.missions];
       
@@ -228,7 +228,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     
-    if (allUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    // Check against all users, not just loaded ones
+    const { users: allUsersInDb } = loadDataFromStorage();
+    if (allUsersInDb.some(u => u.email.toLowerCase() === email.toLowerCase())) {
         toast({ title: 'Pendaftaran Gagal', description: 'Email ini sudah terdaftar.', variant: 'destructive' });
         setIsLoading(false);
         return;
@@ -257,7 +259,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const newMissions = await generateNewUserMissions(1);
-        const newUsers = [...allUsers, newUser];
+        const newUsers = [...allUsersInDb, newUser];
 
         setAllUsers(newUsers);
         setMissions(newMissions);
