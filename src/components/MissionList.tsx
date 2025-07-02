@@ -136,11 +136,13 @@ export default function MissionList() {
             </div>
         )
     }
-    if (missionList.length === 0) return null;
-
+    
     if (!currentUser) return null;
 
-    const allCompleted = missionList.every(m => currentUser.completedMissions.includes(m.id));
+    // Daily missions are removed from the list upon completion, so an empty list means they're all done.
+    // For other categories, we check if all missions in the list have been completed.
+    const allCompleted = missionList.length > 0 && missionList.every(m => currentUser.completedMissions.includes(m.id));
+    const showCompletionCard = allCompleted || (title === 'Misi Harian' && missionList.length === 0);
 
     return (
       <div className="mb-12">
@@ -148,24 +150,29 @@ export default function MissionList() {
           {icon}
           {title}
         </h2>
-        {allCompleted && title !== "Misi Harian" && (
+        {showCompletionCard ? (
             <Card className="mb-6 border-dashed border-success bg-success/10 p-6 text-center text-success-foreground shadow-md">
                 <CheckCircle className="mx-auto h-12 w-12 text-success" />
                 <CardTitle className="mt-4 font-headline text-2xl">Luar Biasa!</CardTitle>
-                <CardDescription className="mt-2 text-lg">Anda telah menyelesaikan semua {title.toLowerCase()}. Nantikan tantangan baru selanjutnya!</CardDescription>
+                <CardDescription className="mt-2 text-lg">
+                    {title === 'Misi Harian'
+                        ? "Anda telah menyelesaikan semua misi harian. Misi baru akan muncul besok!"
+                        : `Anda telah menyelesaikan semua ${title.toLowerCase()}. Nantikan tantangan baru selanjutnya!`}
+                </CardDescription>
             </Card>
+        ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {missionList.map((mission) => (
+                <MissionCard 
+                    key={mission.id} 
+                    mission={mission}
+                    onAction={handleActionMission}
+                    onOpenDialog={handleOpenDialog}
+                    isCompleting={completingMissionId === mission.id}
+                />
+            ))}
+            </div>
         )}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {missionList.map((mission) => (
-            <MissionCard 
-                key={mission.id} 
-                mission={mission}
-                onAction={handleActionMission}
-                onOpenDialog={handleOpenDialog}
-                isCompleting={completingMissionId === mission.id}
-            />
-          ))}
-        </div>
       </div>
     );
   };

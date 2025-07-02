@@ -401,21 +401,35 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const leveledUp = newLevel > oldLevel;
     
     let tempMissions = [...missions];
+    // If it's a daily mission, we attempt to replace it.
     if (mission.category === 'Harian') {
+      let wasReplaced = false;
       try {
+        // We ask the AI to generate one new daily mission
         const { missions: newMissions } = await generateMissions({
             level: newLevel,
             existingMissionIds: missions.map(m => m.id),
             count: 1,
             category: 'Harian'
         });
+
+        // If the AI successfully returns a mission, we replace the old one
         if (newMissions && newMissions.length > 0) {
            const missionIndex = tempMissions.findIndex(m => m.id === missionId);
            if (missionIndex !== -1) {
                tempMissions[missionIndex] = newMissions[0];
+               wasReplaced = true;
            }
         }
-      } catch (error) { console.error("Gagal membuat misi pengganti:", error); }
+      } catch (error) { 
+        console.error("Gagal membuat misi pengganti:", error); 
+      }
+      
+      // Safeguard: If the replacement failed, we remove the completed mission from the list.
+      // This is better than showing a completed mission that won't go away.
+      if (!wasReplaced) {
+        tempMissions = tempMissions.filter(m => m.id !== missionId);
+      }
     }
 
     const updatedUser: User = {
