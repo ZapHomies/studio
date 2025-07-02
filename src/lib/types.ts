@@ -44,3 +44,19 @@ export interface Reward {
   style?: 'solid' | 'gradient'; // Menambahkan style untuk membedakan tipe border
   season?: 'Ramadan';
 }
+
+export interface ForumComment {
+  id: string;
+  authorId: string;
+  content: string;
+  timestamp: string;
+}
+
+export interface ForumPost {
+  id: string;
+  authorId: string;
+  title: string;
+  content: string;
+  timestamp: string;
+  comments: ForumComment[];
+}

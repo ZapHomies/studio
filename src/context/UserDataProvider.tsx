@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { type User, type Mission, type Reward } from '@/lib/types';
+import { type User, type Mission, type Reward, type ForumPost, type ForumComment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { avatarPool, staticMissions, rewards as allRewards } from '@/lib/data';
 import { useRouter, usePathname } from 'next/navigation';
@@ -15,6 +15,7 @@ interface UserDataContextType {
   currentUser: User | null;
   missions: Mission[];
   allUsers: User[];
+  posts: ForumPost[];
   isAuthenticated: boolean;
   isLoading: boolean;
   completeMission: (missionId: string, bonusXp?: number, overrideXp?: number) => Promise<void>;
@@ -25,6 +26,8 @@ interface UserDataContextType {
   markWelcomeAsSeen: () => void;
   redeemReward: (rewardId: string) => void;
   setActiveBorder: (borderId: string | null) => void;
+  createPost: (title: string, content: string) => void;
+  addComment: (postId: string, content: string) => void;
 }
 
 const NUM_DAILY = 4;
@@ -55,6 +58,7 @@ export const UserDataContext = createContext<UserDataContextType>({
   currentUser: null,
   missions: [],
   allUsers: [],
+  posts: [],
   isAuthenticated: false,
   isLoading: true,
   completeMission: async () => {},
@@ -65,6 +69,8 @@ export const UserDataContext = createContext<UserDataContextType>({
   markWelcomeAsSeen: () => {},
   redeemReward: () => {},
   setActiveBorder: () => {},
+  createPost: () => {},
+  addComment: () => {},
 });
 
 const getTitleForLevel = (level: number): string => {
@@ -85,31 +91,37 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [posts, setPosts] = useState<ForumPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
 
-  const loadDataFromStorage = useCallback((): { users: User[], missions: Mission[] } => {
+  const loadDataFromStorage = useCallback((): { users: User[], missions: Mission[], posts: ForumPost[] } => {
     try {
-      if (typeof window === 'undefined') return { users: [], missions: [] };
+      if (typeof window === 'undefined') return { users: [], missions: [], posts: [] };
       const storedData = localStorage.getItem(USERS_DB_KEY);
-      return storedData ? JSON.parse(storedData) : { users: [], missions: [] };
+      const parsedData = storedData ? JSON.parse(storedData) : {};
+      return { 
+          users: parsedData.users || [],
+          missions: parsedData.missions || [],
+          posts: parsedData.posts || []
+      };
     } catch (e) {
       console.error("Gagal mem-parse data dari localStorage", e);
-      return { users: [], missions: [] };
+      return { users: [], missions: [], posts: [] };
     }
   }, []);
 
-  const saveDataToStorage = useCallback((users: User[], missions: Mission[]) => {
+  const saveDataToStorage = useCallback((users: User[], missions: Mission[], posts: ForumPost[]) => {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(USERS_DB_KEY, JSON.stringify({ users, missions }));
+    localStorage.setItem(USERS_DB_KEY, JSON.stringify({ users, missions, posts }));
   }, []);
   
   useEffect(() => {
     if (isLoading) return; // Only save when not in initial loading phase
-    saveDataToStorage(allUsers, missions);
-  }, [allUsers, missions, isLoading, saveDataToStorage]);
+    saveDataToStorage(allUsers, missions, posts);
+  }, [allUsers, missions, posts, isLoading, saveDataToStorage]);
 
   const generateNewUserMissions = async (level: number): Promise<Mission[]> => {
       const existingIds = staticMissions.map(m => m.id);
@@ -173,7 +185,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const rehydrateSession = useCallback(async () => {
     setIsLoading(true);
     try {
-        const { users, missions: storedMissions } = loadDataFromStorage();
+        const { users, missions: storedMissions, posts: storedPosts } = loadDataFromStorage();
         const sessionId = typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) : null;
 
         if (sessionId && users.length > 0) {
@@ -192,6 +204,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             setAllUsers(users);
             setMissions(storedMissions.length > 0 ? storedMissions : staticMissions);
         }
+        setPosts(storedPosts);
     } catch (error) {
         console.error("Gagal memulihkan sesi:", error);
         toast({
@@ -228,7 +241,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     
-    // Check against all users, not just loaded ones
     const { users: allUsersInDb } = loadDataFromStorage();
     if (allUsersInDb.some(u => u.email.toLowerCase() === email.toLowerCase())) {
         toast({ title: 'Pendaftaran Gagal', description: 'Email ini sudah terdaftar.', variant: 'destructive' });
@@ -422,11 +434,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (mission.category === 'Harian') {
-      // Immediately remove the completed mission from the UI for responsiveness.
       setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
       
       try {
-        // Asynchronously fetch a replacement mission.
         const { missions: newMissions } = await generateMissions({
             level: newLevel,
             existingMissionIds: missions.map(m => m.id).filter(id => id !== missionId),
@@ -434,18 +444,61 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             category: 'Harian'
         });
 
-        // If successful, add the new mission to the list.
         if (newMissions && newMissions.length > 0) {
             setMissions(prevMissions => [...prevMissions, ...newMissions]);
+        } else {
+             console.log("AI tidak mengembalikan misi harian baru.");
         }
       } catch (error) {
-        // If fetching fails, the mission is already removed from the UI.
         console.error("Gagal membuat misi pengganti:", error);
       }
     }
   };
+
+  const createPost = (title: string, content: string) => {
+    if (!currentUser) {
+        toast({ title: 'Aksi Gagal', description: 'Anda harus login untuk membuat post.', variant: 'destructive' });
+        return;
+    }
+
+    const newPost: ForumPost = {
+        id: `post-${Date.now()}-${Math.random()}`,
+        authorId: currentUser.id,
+        title,
+        content,
+        timestamp: new Date().toISOString(),
+        comments: [],
+    };
+
+    setPosts(prevPosts => [newPost, ...prevPosts]);
+    toast({ title: 'Postingan Dibuat!', description: 'Postingan Anda berhasil ditambahkan ke forum.', variant: 'success' });
+  };
+
+  const addComment = (postId: string, content: string) => {
+     if (!currentUser) {
+        toast({ title: 'Aksi Gagal', description: 'Anda harus login untuk berkomentar.', variant: 'destructive' });
+        return;
+    }
+
+    const newComment: ForumComment = {
+        id: `comment-${Date.now()}-${Math.random()}`,
+        authorId: currentUser.id,
+        content,
+        timestamp: new Date().toISOString(),
+    };
+
+    setPosts(prevPosts => {
+        return prevPosts.map(post => {
+            if (post.id === postId) {
+                const updatedPost = { ...post, comments: [...post.comments, newComment] };
+                return updatedPost;
+            }
+            return post;
+        });
+    });
+  };
   
-  const value = { currentUser, missions, allUsers, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser, markWelcomeAsSeen, redeemReward, setActiveBorder };
+  const value = { currentUser, missions, allUsers, posts, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser, markWelcomeAsSeen, redeemReward, setActiveBorder, createPost, addComment };
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
 };

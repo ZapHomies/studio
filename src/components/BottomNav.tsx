@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Mic, User, Trophy } from 'lucide-react';
+import { Home, Mic, User, Trophy, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/missions', icon: Home, label: 'Misi' },
   { href: '/leaderboard', icon: Trophy, label: 'Peringkat' },
+  { href: '/forum', icon: MessageSquare, label: 'Forum'},
   { href: '/recitation', icon: Mic, label: 'Mengaji' },
   { href: '/profile', icon: User, label: 'Profil' },
 ];
@@ -17,7 +18,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/90 backdrop-blur-sm">
-      <div className="mx-auto grid h-16 max-w-2xl grid-cols-4 items-center justify-around px-2 sm:px-4">
+      <div className="mx-auto grid h-16 max-w-2xl grid-cols-5 items-center justify-around px-2 sm:px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
