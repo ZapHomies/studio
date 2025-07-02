@@ -386,7 +386,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const completeMission = async (missionId: string, bonusXp: number = 0, overrideXp?: number) => {
     if (!currentUser) return;
-    
+
     const mission = missions.find((m) => m.id === missionId);
     if (!mission || currentUser.completedMissions.includes(missionId)) return;
 
@@ -399,33 +399,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const oldLevel = currentUser.level;
     const newLevel = getLevelForXp(newXp);
     const leveledUp = newLevel > oldLevel;
-    
-    let tempMissions = [...missions];
-    if (mission.category === 'Harian') {
-      // Remove the completed mission from the list first.
-      // This ensures it disappears from the UI immediately.
-      let updatedMissions = missions.filter(m => m.id !== missionId);
-
-      try {
-        // Then, try to fetch a replacement.
-        const { missions: newMissions } = await generateMissions({
-            level: newLevel,
-            existingMissionIds: updatedMissions.map(m => m.id), // Pass the updated list of IDs
-            count: 1,
-            category: 'Harian'
-        });
-
-        // If a new mission is generated, add it to our list.
-        if (newMissions && newMissions.length > 0) {
-            updatedMissions.push(newMissions[0]);
-        }
-      } catch (error) {
-        console.error("Gagal membuat misi pengganti, misi harian akan berkurang satu:", error);
-        // If fetching fails, we just proceed with the shorter list.
-        // No extra action needed here.
-      }
-      tempMissions = updatedMissions;
-    }
 
     const updatedUser: User = {
       ...currentUser,
@@ -439,7 +412,26 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     
     setCurrentUser(updatedUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
-    setMissions(tempMissions);
+
+    if (mission.category === 'Harian') {
+      const updatedMissions = missions.filter(m => m.id !== missionId);
+      setMissions(updatedMissions);
+
+      try {
+        const { missions: newMissions } = await generateMissions({
+            level: newLevel,
+            existingMissionIds: updatedMissions.map(m => m.id),
+            count: 1,
+            category: 'Harian'
+        });
+
+        if (newMissions && newMissions.length > 0) {
+            setMissions(prevMissions => [...prevMissions, ...newMissions]);
+        }
+      } catch (error) {
+        console.error("Gagal membuat misi pengganti, misi harian akan berkurang satu:", error);
+      }
+    }
 
     if (leveledUp) {
         toast({
