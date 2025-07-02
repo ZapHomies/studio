@@ -227,9 +227,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
-    const { users } = loadDataFromStorage();
     
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    if (allUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
         toast({ title: 'Pendaftaran Gagal', description: 'Email ini sudah terdaftar.', variant: 'destructive' });
         setIsLoading(false);
         return;
@@ -258,7 +257,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const newMissions = await generateNewUserMissions(1);
-        const newUsers = [...users, newUser];
+        const newUsers = [...allUsers, newUser];
 
         setAllUsers(newUsers);
         setMissions(newMissions);
@@ -266,7 +265,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
         if (typeof window !== 'undefined') {
             sessionStorage.setItem(SESSION_KEY, newUser.id);
-            localStorage.setItem(USERS_DB_KEY, JSON.stringify({ users: newUsers, missions: newMissions }));
         }
         
         toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
@@ -413,32 +411,35 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setCurrentUser(updatedUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
 
-    if (mission.category === 'Harian') {
-      const updatedMissions = missions.filter(m => m.id !== missionId);
-      setMissions(updatedMissions);
-
-      try {
-        const { missions: newMissions } = await generateMissions({
-            level: newLevel,
-            existingMissionIds: updatedMissions.map(m => m.id),
-            count: 1,
-            category: 'Harian'
-        });
-
-        if (newMissions && newMissions.length > 0) {
-            setMissions(prevMissions => [...prevMissions, ...newMissions]);
-        }
-      } catch (error) {
-        console.error("Gagal membuat misi pengganti, misi harian akan berkurang satu:", error);
-      }
-    }
-
     if (leveledUp) {
         toast({
             title: 'Naik Level!',
             description: `Selamat! Anda telah mencapai Level ${newLevel} dan meraih gelar "${getTitleForLevel(newLevel)}".`,
             variant: 'success',
         });
+    }
+
+    if (mission.category === 'Harian') {
+      // Immediately remove the completed mission from the UI for responsiveness.
+      setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
+      
+      try {
+        // Asynchronously fetch a replacement mission.
+        const { missions: newMissions } = await generateMissions({
+            level: newLevel,
+            existingMissionIds: missions.map(m => m.id).filter(id => id !== missionId),
+            count: 1,
+            category: 'Harian'
+        });
+
+        // If successful, add the new mission to the list.
+        if (newMissions && newMissions.length > 0) {
+            setMissions(prevMissions => [...prevMissions, ...newMissions]);
+        }
+      } catch (error) {
+        // If fetching fails, the mission is already removed from the UI.
+        console.error("Gagal membuat misi pengganti:", error);
+      }
     }
   };
   
