@@ -401,35 +401,30 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const leveledUp = newLevel > oldLevel;
     
     let tempMissions = [...missions];
-    // If it's a daily mission, we attempt to replace it.
     if (mission.category === 'Harian') {
-      let wasReplaced = false;
+      // Remove the completed mission from the list first.
+      // This ensures it disappears from the UI immediately.
+      let updatedMissions = missions.filter(m => m.id !== missionId);
+
       try {
-        // We ask the AI to generate one new daily mission
+        // Then, try to fetch a replacement.
         const { missions: newMissions } = await generateMissions({
             level: newLevel,
-            existingMissionIds: missions.map(m => m.id),
+            existingMissionIds: updatedMissions.map(m => m.id), // Pass the updated list of IDs
             count: 1,
             category: 'Harian'
         });
 
-        // If the AI successfully returns a mission, we replace the old one
+        // If a new mission is generated, add it to our list.
         if (newMissions && newMissions.length > 0) {
-           const missionIndex = tempMissions.findIndex(m => m.id === missionId);
-           if (missionIndex !== -1) {
-               tempMissions[missionIndex] = newMissions[0];
-               wasReplaced = true;
-           }
+            updatedMissions.push(newMissions[0]);
         }
-      } catch (error) { 
-        console.error("Gagal membuat misi pengganti:", error); 
+      } catch (error) {
+        console.error("Gagal membuat misi pengganti, misi harian akan berkurang satu:", error);
+        // If fetching fails, we just proceed with the shorter list.
+        // No extra action needed here.
       }
-      
-      // Safeguard: If the replacement failed, we remove the completed mission from the list.
-      // This is better than showing a completed mission that won't go away.
-      if (!wasReplaced) {
-        tempMissions = tempMissions.filter(m => m.id !== missionId);
-      }
+      tempMissions = updatedMissions;
     }
 
     const updatedUser: User = {
