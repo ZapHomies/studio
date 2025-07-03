@@ -150,7 +150,7 @@ function PostCard({ post, author }: { post: ForumPost, author: User | undefined 
   const sortedComments = [...post.comments].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden scroll-mt-24" id={post.id}>
         <Accordion type="single" collapsible>
             <AccordionItem value={post.id}>
                 <AccordionTrigger className="p-4 hover:no-underline hover:bg-muted/50">
