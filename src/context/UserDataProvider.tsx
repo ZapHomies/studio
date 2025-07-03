@@ -305,7 +305,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
       if (insertError) {
         console.error("Supabase insert error object:", insertError);
-        const errorMessage = insertError.message || "An unknown error occurred during profile creation.";
+        const errorMessage = insertError.message || "Gagal membuat profil. Pastikan tabel 'users' ada di database Supabase Anda dan kebijakan RLS (Row Level Security) mengizinkan pengguna baru untuk membuat profil mereka sendiri.";
         throw new Error(errorMessage);
       }
       
