@@ -92,6 +92,25 @@ const NUM_DAILY = 4;
 const NUM_WEEKLY = 2;
 const NUM_MONTHLY = 2;
 
+const generateNewUserMissions = async (level: number): Promise<Mission[]> => {
+    try {
+      const existingIds = staticMissions.map(m => m.id);
+      
+      const dailyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_DAILY, category: 'Harian' });
+      const weeklyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_WEEKLY, category: 'Mingguan' });
+      const monthlyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
+      
+      const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyPromise]);
+      
+      const combinedMissions = [...staticMissions, ...dailyResult.missions, ...weeklyResult.missions, ...monthlyResult.missions];
+      
+      return combinedMissions;
+    } catch (error) {
+      console.error("Failed to generate initial missions, returning only static ones.", error);
+      return staticMissions; // Fallback
+    }
+};
+
 export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -175,7 +194,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         setCurrentUser(null);
         setAllUsers([]);
         setPosts([]);
-        router.push('/');
+        if (pathname !== '/' && pathname !== '/register') {
+            router.push('/');
+        }
         setIsLoading(false);
         return;
       }
@@ -188,7 +209,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       
       if (error || !userProfile) {
         console.error('Error fetching user profile or profile not found:', error);
-        await supabase.auth.signOut();
+        // This might happen if registration is not complete yet, so we don't sign out.
+        // We wait for the user profile to be created.
+        if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') {
+            await supabase.auth.signOut();
+        }
         setIsLoading(false);
         return;
       }
@@ -219,16 +244,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         setCurrentUser(updatedUser);
       }
       
-      // Fetch global data in parallel
       await Promise.all([fetchForumData(), fetchAllUsers()]);
       setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [router, fetchForumData, fetchAllUsers, processUserSession]);
+  }, [router, fetchForumData, fetchAllUsers, processUserSession, pathname]);
   
-  // --- AUTHENTICATION & ROUTING ---
-
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated && (pathname === '/' || pathname === '/register')) {
@@ -257,7 +279,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const now = new Date();
-      const initialMissions = await generateMissions({ level: 1, existingMissionIds: [], count: NUM_DAILY + NUM_WEEKLY + NUM_MONTHLY, category: 'Harian' }); // simplified for now
+      const initialMissions = await generateNewUserMissions(1);
       
       const newUserProfile: Omit<User, 'email'> & { id: string, email: string } = {
         id: authData.user.id,
@@ -276,7 +298,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         hasSeenWelcome: false,
         unlockedRewardIds: ['border-welcome'],
         activeBorderId: 'border-welcome',
-        missions: [...staticMissions, ...initialMissions.missions],
+        missions: initialMissions,
       };
 
       const { error: insertError } = await supabase.from('users').insert(newUserProfile);
@@ -285,7 +307,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         throw insertError;
       }
       
-      // setCurrentUser will be handled by onAuthStateChange
       toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
     
     } catch (error: any) {
@@ -302,7 +323,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       toast({ title: 'Login Gagal', description: error.message, variant: 'destructive' });
     }
-    // No need to set user, onAuthStateChange will handle it.
     setIsLoading(false);
   };
   
@@ -312,10 +332,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setCurrentUser(null);
     setPosts([]);
     setAllUsers([]);
+    router.push('/');
     setIsLoading(false);
   };
-
-  // --- USER ACTIONS ---
 
   const completeMission = async (missionId: string, bonusXp = 0, overrideXp?: number) => {
     if (!currentUser) return;
@@ -334,11 +353,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const leveledUp = newLevel > oldLevel;
 
     const updatedCompletedMissions = [...currentUser.completedMissions, missionId];
-    let updatedMissions = [...currentUser.missions];
-
+    
+    let updatedMissions = currentUser.missions.filter(m => m.id !== missionId);
+    const userSnapshot = { ...currentUser, missions: updatedMissions, completedMissions: updatedCompletedMissions };
+    
+    setCurrentUser(userSnapshot);
+    
     if (mission.category === 'Harian') {
-        updatedMissions = updatedMissions.filter(m => m.id !== missionId);
-        // Regenerate one mission to replace
         try {
             const { missions: newMissions } = await generateMissions({
                 level: newLevel,
@@ -354,8 +375,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         }
     }
 
-    const updatedUser = {
-      ...currentUser,
+    const finalUserUpdate = {
       xp: newXp,
       level: newLevel,
       xpToNextLevel: getTotalXpForLevel(newLevel + 1),
@@ -365,23 +385,14 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       missions: updatedMissions,
     };
 
-    setCurrentUser(updatedUser);
-    setAllUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setCurrentUser(prev => prev ? { ...prev, ...finalUserUpdate } : null);
+    setAllUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, ...finalUserUpdate } : u));
 
-    const { error } = await supabase.from('users').update({
-        xp: updatedUser.xp,
-        level: updatedUser.level,
-        xpToNextLevel: updatedUser.xpToNextLevel,
-        coins: updatedUser.coins,
-        title: updatedUser.title,
-        completedMissions: updatedUser.completedMissions,
-        missions: updatedUser.missions,
-    }).eq('id', currentUser.id);
+    const { error } = await supabase.from('users').update(finalUserUpdate).eq('id', currentUser.id);
 
     if (error) {
         toast({ title: "Gagal Menyimpan Progres", description: "Progres Anda mungkin tidak tersimpan.", variant: 'destructive' });
         console.error(error);
-        // Optionally revert state
     }
 
     if (leveledUp) {
@@ -402,7 +413,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const { error } = await supabase.from('users').update(updatedData).eq('id', currentUser.id);
     if (error) {
         toast({ title: 'Gagal Memperbarui Profil', variant: 'destructive' });
-        // Revert state
         setCurrentUser(currentUser);
         setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? currentUser : u));
     } else {
@@ -436,7 +446,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         toast({ title: 'Gagal Menyimpan', variant: 'destructive' });
-        setCurrentUser(currentUser); // Revert
+        setCurrentUser(currentUser);
       } else {
         toast({ title: 'Hadiah Berhasil Ditukar!', description: `Anda membuka "${reward.name}".`, variant: 'success' });
       }
@@ -449,11 +459,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const { error } = await supabase.from('users').update({ activeBorderId: borderId }).eq('id', currentUser.id);
      if (error) {
         toast({ title: 'Gagal Mengatur Bingkai', variant: 'destructive' });
-        setCurrentUser(currentUser); // Revert
+        setCurrentUser(currentUser);
      }
   };
-
-  // --- FORUM ACTIONS ---
 
   const createPost = async (title: string, content: string) => {
     if (!currentUser) return;
@@ -504,8 +512,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         ) as any
     );
   };
-  
-  // --- CONTEXT VALUE ---
   
   const value = { currentUser, missions, allUsers, posts, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser, markWelcomeAsSeen, redeemReward, setActiveBorder, createPost, addComment };
 
