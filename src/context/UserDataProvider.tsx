@@ -304,7 +304,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const { error: insertError } = await supabase.from('users').insert(newUserProfile);
 
       if (insertError) {
-        throw insertError;
+        throw new Error(insertError.message);
       }
       
       toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
@@ -352,13 +352,23 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const newLevel = getLevelForXp(newXp);
     const leveledUp = newLevel > oldLevel;
 
+    // Immediately update the UI for a responsive feel
     const updatedCompletedMissions = [...currentUser.completedMissions, missionId];
-    
     let updatedMissions = currentUser.missions.filter(m => m.id !== missionId);
-    const userSnapshot = { ...currentUser, missions: updatedMissions, completedMissions: updatedCompletedMissions };
     
-    setCurrentUser(userSnapshot);
-    
+    const optimisticUserUpdate = {
+      ...currentUser,
+      xp: newXp,
+      level: newLevel,
+      xpToNextLevel: getTotalXpForLevel(newLevel + 1),
+      coins: newCoins,
+      title: getTitleForLevel(newLevel),
+      completedMissions: updatedCompletedMissions,
+      missions: updatedMissions,
+    };
+    setCurrentUser(optimisticUserUpdate);
+
+    // Asynchronously generate a replacement mission if needed
     if (mission.category === 'Harian') {
         try {
             const { missions: newMissions } = await generateMissions({
@@ -368,7 +378,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
                 category: 'Harian'
             });
             if (newMissions && newMissions.length > 0) {
-                updatedMissions.push(...newMissions);
+                // Add the new mission to the state
+                updatedMissions = [...updatedMissions, ...newMissions];
             }
         } catch (error) {
             console.error("Gagal membuat misi pengganti:", error);
@@ -385,6 +396,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       missions: updatedMissions,
     };
 
+    // Final state update and DB write
     setCurrentUser(prev => prev ? { ...prev, ...finalUserUpdate } : null);
     setAllUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, ...finalUserUpdate } : u));
 
@@ -393,6 +405,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
         toast({ title: "Gagal Menyimpan Progres", description: "Progres Anda mungkin tidak tersimpan.", variant: 'destructive' });
         console.error(error);
+        // Optionally revert state, but for a better UX, we might not.
     }
 
     if (leveledUp) {
