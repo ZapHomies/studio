@@ -1,24 +1,24 @@
 'use client';
 
 export interface User {
-  id: string; // Akan menggunakan email untuk kesederhanaan
+  id: string; // Will use Supabase Auth UUID
   name: string;
   email: string;
-  password: string; // Di aplikasi nyata, ini akan menjadi hash. Di sini, disimpan apa adanya.
   avatarUrl: string;
   level: number;
   xp: number;
   xpToNextLevel: number;
   coins: number;
   completedMissions: string[];
+  missions: Mission[]; // Missions are now stored per-user
   title: string;
-  // Timestamps untuk reset misi
+  // Timestamps for reset logic
   lastDailyReset: string;
   lastWeeklyReset: string;
   lastMonthlyReset: string;
-  // Flag untuk onboarding
+  // Flag for onboarding
   hasSeenWelcome: boolean;
-  // Fitur Hadiah
+  // Rewards feature
   unlockedRewardIds: string[];
   activeBorderId: string | null;
 }
@@ -38,25 +38,30 @@ export interface Reward {
   id: string;
   name: string;
   description: string;
-  cost: number; // Sekarang dalam Koin
+  cost: number;
   type: 'theme' | 'border';
-  value: string; // Nama tema atau kelas CSS untuk border
-  style?: 'solid' | 'gradient'; // Menambahkan style untuk membedakan tipe border
+  value: string;
+  style?: 'solid' | 'gradient';
   season?: 'Ramadan';
 }
 
 export interface ForumComment {
   id: string;
   authorId: string;
+  postId: string;
   content: string;
   timestamp: string;
+  // Joined data from users table
+  author?: Pick<User, 'name' | 'avatarUrl'>;
 }
 
 export interface ForumPost {
-  id: string;
+  id:string;
   authorId: string;
   title: string;
   content: string;
   timestamp: string;
   comments: ForumComment[];
+  // Joined data from users table
+  author?: Pick<User, 'name' | 'avatarUrl'>;
 }
