@@ -37,13 +37,19 @@ export type GenerateMissionsOutput = z.infer<typeof GenerateMissionsOutputSchema
 
 
 export async function generateMissions(input: GenerateMissionsInput): Promise<GenerateMissionsOutput> {
-  // Tambahkan penanganan error jika output null
-  const result = await generateMissionsFlow(input);
-  if (!result || !result.missions) {
-    console.error("AI mission generation failed, returning empty array.");
+  try {
+    const result = await generateMissionsFlow(input);
+    if (!result || !result.missions) {
+      console.warn("AI mission generation returned empty or null result.");
+      return { missions: [] };
+    }
+    return result;
+  } catch (error) {
+    console.error("An error occurred during AI mission generation:", error);
+    // API is unavailable or threw an error, so we return an empty array of missions.
+    // The calling code in UserDataProvider is already set up to handle this gracefully.
     return { missions: [] };
   }
-  return result;
 }
 
 const prompt = ai.definePrompt({
