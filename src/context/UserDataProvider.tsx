@@ -304,7 +304,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const { error: insertError } = await supabase.from('users').insert(newUserProfile);
 
       if (insertError) {
-        throw new Error(insertError.message);
+        console.error("Supabase insert error object:", insertError);
+        const errorMessage = insertError.message || "An unknown error occurred during profile creation.";
+        throw new Error(errorMessage);
       }
       
       toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
@@ -339,9 +341,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const completeMission = async (missionId: string, bonusXp = 0, overrideXp?: number) => {
     if (!currentUser) return;
 
-    const mission = missions.find((m) => m.id === missionId);
+    const mission = currentUser.missions.find((m) => m.id === missionId);
     if (!mission || currentUser.completedMissions.includes(missionId)) return;
 
+    // --- Instantly update UI for responsiveness ---
     const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
     const coinsFromMission = mission.coins || 0;
     const totalXpGained = xpFromMission + bonusXp;
@@ -352,61 +355,72 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const newLevel = getLevelForXp(newXp);
     const leveledUp = newLevel > oldLevel;
 
-    // Immediately update the UI for a responsive feel
+    // Create a new array for completed missions and filter out the completed mission from the user's mission list.
     const updatedCompletedMissions = [...currentUser.completedMissions, missionId];
-    let updatedMissions = currentUser.missions.filter(m => m.id !== missionId);
+    const newMissionsList = currentUser.missions.filter(m => m.id !== missionId);
     
+    // Create an optimistic user object for immediate state update.
     const optimisticUserUpdate = {
-      ...currentUser,
-      xp: newXp,
-      level: newLevel,
-      xpToNextLevel: getTotalXpForLevel(newLevel + 1),
-      coins: newCoins,
-      title: getTitleForLevel(newLevel),
-      completedMissions: updatedCompletedMissions,
-      missions: updatedMissions,
+        ...currentUser,
+        xp: newXp,
+        coins: newCoins,
+        level: newLevel,
+        title: getTitleForLevel(newLevel),
+        xpToNextLevel: getTotalXpForLevel(newLevel + 1),
+        completedMissions: updatedCompletedMissions,
+        missions: newMissionsList,
     };
+
+    // Apply the optimistic update to the current user state.
     setCurrentUser(optimisticUserUpdate);
-
-    // Asynchronously generate a replacement mission if needed
-    if (mission.category === 'Harian') {
-        try {
-            const { missions: newMissions } = await generateMissions({
-                level: newLevel,
-                existingMissionIds: updatedMissions.map(m => m.id),
-                count: 1,
-                category: 'Harian'
-            });
-            if (newMissions && newMissions.length > 0) {
-                // Add the new mission to the state
-                updatedMissions = [...updatedMissions, ...newMissions];
+    // Also update the user in the allUsers list for leaderboards etc.
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? optimisticUserUpdate : u));
+    
+    // --- Asynchronously handle DB updates and new mission generation ---
+    (async () => {
+        let finalMissionsList = newMissionsList;
+        // If it's a daily mission, generate a replacement.
+        if (mission.category === 'Harian') {
+            try {
+                const { missions: newMissions } = await generateMissions({
+                    level: newLevel,
+                    existingMissionIds: newMissionsList.map(m => m.id),
+                    count: 1,
+                    category: 'Harian'
+                });
+                if (newMissions && newMissions.length > 0) {
+                    finalMissionsList = [...newMissionsList, ...newMissions];
+                }
+            } catch (error) {
+                console.error("Gagal membuat misi pengganti:", error);
+                // The mission is already removed from the UI, so we just log the error.
             }
-        } catch (error) {
-            console.error("Gagal membuat misi pengganti:", error);
         }
-    }
 
-    const finalUserUpdate = {
-      xp: newXp,
-      level: newLevel,
-      xpToNextLevel: getTotalXpForLevel(newLevel + 1),
-      coins: newCoins,
-      title: getTitleForLevel(newLevel),
-      completedMissions: updatedCompletedMissions,
-      missions: updatedMissions,
-    };
+        // Prepare the final payload for the database.
+        const dbUpdatePayload = {
+            xp: newXp,
+            coins: newCoins,
+            level: newLevel,
+            title: getTitleForLevel(newLevel),
+            xpToNextLevel: getTotalXpForLevel(newLevel + 1),
+            completedMissions: updatedCompletedMissions,
+            missions: finalMissionsList,
+        };
+        
+        // Update the user state again with the potentially new mission list
+        setCurrentUser(prev => prev ? { ...prev, ...dbUpdatePayload } : null);
 
-    // Final state update and DB write
-    setCurrentUser(prev => prev ? { ...prev, ...finalUserUpdate } : null);
-    setAllUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, ...finalUserUpdate } : u));
+        // Update the database.
+        const { error } = await supabase.from('users').update(dbUpdatePayload).eq('id', currentUser.id);
 
-    const { error } = await supabase.from('users').update(finalUserUpdate).eq('id', currentUser.id);
+        if (error) {
+            toast({ title: "Gagal Menyimpan Progres", description: "Progres Anda mungkin tidak tersimpan.", variant: 'destructive' });
+            console.error(error);
+            // Consider reverting the state or notifying the user more strongly.
+        }
+    })();
 
-    if (error) {
-        toast({ title: "Gagal Menyimpan Progres", description: "Progres Anda mungkin tidak tersimpan.", variant: 'destructive' });
-        console.error(error);
-        // Optionally revert state, but for a better UX, we might not.
-    }
 
     if (leveledUp) {
         toast({
