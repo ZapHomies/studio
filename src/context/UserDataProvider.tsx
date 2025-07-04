@@ -128,7 +128,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const fetchForumData = useCallback(async () => {
     const { data, error } = await supabase
       .from('posts')
-      .select('*, author:authorId(name, avatarUrl), comments(*, author:authorId(name, avatarUrl))')
+      .select('*, author:authorId(name, avatarUrl), comments(*)')
       .order('timestamp', { ascending: false });
 
     if (error) {
@@ -158,7 +158,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const now = new Date();
 
     // Sanitize nullable arrays to prevent downstream errors.
-    // This handles cases where old user data in the DB might have null for these fields.
     if (!userToUpdate.missions) userToUpdate.missions = [];
     if (!userToUpdate.completedMissions) userToUpdate.completedMissions = [];
     if (!userToUpdate.unlockedRewardIds) userToUpdate.unlockedRewardIds = [];
@@ -313,7 +312,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         missions: initialMissions,
       };
       
-      const { data: updatedUser, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('users')
         .update(fullProfileData)
         .eq('id', authData.user.id)
