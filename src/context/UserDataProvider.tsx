@@ -267,26 +267,14 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       if (authError) throw new Error(authError.message);
       if (!authData.user) throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
 
-      // --- Perbaikan: Proses Pembuatan Profil Dua Langkah ---
-
-      // Langkah 1: Sisipkan profil minimal untuk membuat tautan Foreign Key
-      const minimalProfile = {
-        id: authData.user.id,
-        name: name,
-        email: authData.user.email!,
-      };
-      const { error: insertError } = await supabase.from('users').insert(minimalProfile);
-
-      if (insertError) {
-        console.error("Supabase insert error object:", JSON.stringify(insertError, null, 2));
-        const detailedMessage = `Gagal menyimpan profil ke database. Ini kemungkinan besar disebabkan karena tabel 'users' (dan/atau 'posts', 'comments') belum dibuat di database Anda. Harap jalankan skrip SQL yang diberikan untuk membuat tabel-tabel ini. Pesan dari Supabase: ${insertError.message || 'Tidak ada pesan spesifik.'}`;
-        throw new Error(detailedMessage);
-      }
-
-      // Langkah 2: Buat sisa data dan perbarui profil yang ada
+      // --- Perbaikan: Buat profil lengkap dalam satu langkah ---
       const initialMissions = await generateNewUserMissions(1);
       const now = new Date();
+      
       const fullProfileData = {
+          id: authData.user.id,
+          name: name,
+          email: authData.user.email!,
           avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
           level: 1,
           xp: 0,
@@ -303,18 +291,15 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
           missions: initialMissions,
       };
 
-      const { error: updateError } = await supabase
-        .from('users')
-        .update(fullProfileData)
-        .eq('id', authData.user.id);
+      const { error: insertError } = await supabase.from('users').insert(fullProfileData);
       
-      if (updateError) {
-        // Ini tidak kritis, pengguna sudah dibuat. Kita bisa catat errornya.
-        console.error("Gagal memperbarui profil dengan data lengkap:", updateError.message);
-        toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda.', variant: 'default' });
-      } else {
-        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
+      if (insertError) {
+        console.error("Supabase insert error object:", JSON.stringify(insertError, null, 2));
+        const detailedMessage = `Gagal menyimpan profil ke database. Ini kemungkinan besar disebabkan karena tabel 'users' belum dibuat dengan benar di database Anda. Harap jalankan kembali skrip SQL yang diberikan. Pesan dari Supabase: ${insertError.message || 'Tidak ada pesan spesifik.'}`;
+        throw new Error(detailedMessage);
       }
+      
+      toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
     
     } catch (error: any) {
         console.error("Register failed:", error);
