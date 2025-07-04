@@ -16,7 +16,7 @@ const GenerateAvatarInputSchema = z.object({
 export type GenerateAvatarInput = z.infer<typeof GenerateAvatarInputSchema>;
 
 const GenerateAvatarOutputSchema = z.object({
-  avatarDataUri: z
+  avatar_data_uri: z
     .string()
     .describe('Gambar avatar yang dihasilkan sebagai URI data.'),
 });
@@ -47,6 +47,6 @@ const generateAvatarFlow = ai.defineFlow(
       throw new Error('Pembuatan gambar gagal menghasilkan gambar.');
     }
 
-    return { avatarDataUri: media.url };
+    return { avatar_data_uri: media.url };
   }
 );

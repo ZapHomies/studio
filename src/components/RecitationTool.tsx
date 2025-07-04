@@ -69,7 +69,7 @@ export default function RecitationTool() {
     reader.onloadend = async () => {
       const audioDataUri = reader.result as string;
       try {
-        const result = await provideRecitationFeedback({ audioDataUri });
+        const result = await provideRecitationFeedback({ audio_data_uri: audioDataUri });
         setFeedback(result.feedback);
         setIsSheetOpen(true);
         

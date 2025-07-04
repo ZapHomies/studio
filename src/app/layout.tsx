@@ -27,7 +27,7 @@ function AppBody({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex min-h-screen w-full flex-col">
        {isAuthenticated && <CoinDisplay />}
-       <main className={cn("flex-1", isAuthenticated && "pb-24 pt-16 sm:pt-8")}>
+       <main className="flex-1 pb-24 pt-16 sm:pt-8">
          {children}
        </main>
        {isAuthenticated && <BottomNav />}

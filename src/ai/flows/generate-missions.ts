@@ -18,13 +18,13 @@ const MissionSchema = z.object({
   xp: z.number().describe('Jumlah XP dasar yang diberikan untuk menyelesaikan misi.'),
   coins: z.number().describe('Jumlah Koin yang diberikan untuk menyelesaikan misi. HARUS lebih dari 0.'),
   type: z.enum(['photo', 'action']).describe("Tipe misi. 'photo' membutuhkan bukti foto untuk bonus, 'action' hanya perlu ditandai selesai."),
-  bonusXp: z.optional(z.number()).describe("Jumlah XP bonus jika pengguna mengunggah bukti foto yang valid. Hanya untuk misi tipe 'photo'."),
+  bonus_xp: z.optional(z.number()).describe("Jumlah XP bonus jika pengguna mengunggah bukti foto yang valid. Hanya untuk misi tipe 'photo'."),
   category: z.enum(['Harian', 'Mingguan', 'Bulanan']).describe('Kategori misi.'),
 });
 
 const GenerateMissionsInputSchema = z.object({
   level: z.number().describe("Level pengguna saat ini untuk menyesuaikan kesulitan misi."),
-  existingMissionIds: z.array(z.string()).describe("Daftar ID misi yang sudah ada untuk menghindari duplikasi."),
+  existing_mission_ids: z.array(z.string()).describe("Daftar ID misi yang sudah ada untuk menghindari duplikasi."),
   count: z.number().describe("Jumlah misi yang harus dibuat."),
   category: z.enum(['Harian', 'Mingguan', 'Bulanan']).describe("Kategori misi yang akan dibuat (Harian, Mingguan, Bulanan)."),
 });
@@ -68,8 +68,8 @@ PERATURAN PENTING:
     *   **Bulanan:** Tantangan besar. XP: 150-300. Koin: 300-500.
 3.  **Level Pengguna (saat ini {{level}}):** Sesuaikan kesulitan misi. Untuk level rendah, berikan misi yang lebih mudah. Untuk level tinggi, berikan tantangan yang lebih besar.
 4.  **Tipe Misi:** Hasilkan campuran misi tipe 'action' (tandai selesai) dan 'photo' (unggah foto untuk bonus). JANGAN PERNAH membuat misi tipe 'auto'.
-5.  **Bonus XP:** Untuk misi 'photo', selalu sertakan \`bonusXp\` yang masuk akal (sekitar 50% dari XP dasar). Misi 'photo' tidak memberikan bonus koin.
-6.  **ID Unik:** Pastikan ID unik dan deskriptif (contoh: 'harian-sedekah-subuh'). JANGAN ulangi ID dari daftar ID yang sudah ada: {{{json existingMissionIds}}}.
+5.  **Bonus XP:** Untuk misi 'photo', selalu sertakan \`bonus_xp\` yang masuk akal (sekitar 50% dari XP dasar). Misi 'photo' tidak memberikan bonus koin.
+6.  **ID Unik:** Pastikan ID unik dan deskriptif (contoh: 'harian-sedekah-subuh'). JANGAN ulangi ID dari daftar ID yang sudah ada: {{{json existing_mission_ids}}}.
 7.  **HADIAH KOIN WAJIB:** Semua misi HARUS memberikan hadiah Koin. Nilai 'coins' TIDAK BOLEH 0 atau kurang. Ini adalah aturan paling penting.
 8.  **Kreativitas:** Buat misi yang beragam dan tidak monoton. Contoh ide:
     *   Harian: "Ucapkan Shalawat 100x", "Senyum kepada 3 orang", "Mendoakan orang tua", "Belajar 1 kosakata Arab".

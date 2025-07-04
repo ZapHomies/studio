@@ -104,18 +104,18 @@ export default function MissionCompletionDialog({
       const photoDataUri = reader.result as string;
       try {
         const result = await verifyMissionPhoto({
-          photoDataUri,
-          missionDescription: mission.description,
+          photo_data_uri: photoDataUri,
+          mission_description: mission.description,
         });
 
         setVerificationFeedback(result.reason);
 
-        if (result.isRelevant) {
+        if (result.is_relevant) {
           setStatus('success');
-          await completeMission(mission.id, mission.bonusXp);
+          await completeMission(mission.id, mission.bonus_xp);
           toast({
             title: 'Bonus Didapat!',
-            description: `Bukti terverifikasi! Anda mendapatkan total ${mission.xp + (mission.bonusXp || 0)} XP dan ${mission.coins || 0} Koin.`,
+            description: `Bukti terverifikasi! Anda mendapatkan total ${mission.xp + (mission.bonus_xp || 0)} XP dan ${mission.coins || 0} Koin.`,
             variant: 'success'
           });
           setTimeout(handleCloseDialog, 2000); 
@@ -213,7 +213,7 @@ export default function MissionCompletionDialog({
           </Button>
           <Button onClick={handleVerify} disabled={!file || isBusy}>
             {status === 'verifying' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4"/>}
-            {status === 'verifying' ? 'Memverifikasi...' : `Klaim Bonus (+${mission?.bonusXp || 0} XP)`}
+            {status === 'verifying' ? 'Memverifikasi...' : `Klaim Bonus (+${mission?.bonus_xp || 0} XP)`}
           </Button>
         </DialogFooter>
       </DialogContent>

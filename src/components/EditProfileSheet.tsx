@@ -66,9 +66,9 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
     setGeneratedAvatarUrl(null);
     try {
       const result = await generateAvatar({ prompt: generationPrompt });
-      if (result.avatarDataUri) {
-        setGeneratedAvatarUrl(result.avatarDataUri);
-        setSelectedAvatarUrl(result.avatarDataUri);
+      if (result.avatar_data_uri) {
+        setGeneratedAvatarUrl(result.avatar_data_uri);
+        setSelectedAvatarUrl(result.avatar_data_uri);
       }
     } catch (error) {
       console.error("Pembuatan avatar gagal:", error);

@@ -54,7 +54,7 @@ interface UserDataContextType {
   posts: ForumPost[];
   isAuthenticated: boolean;
   isLoading: boolean;
-  completeMission: (missionId: string, bonusXp?: number, overrideXp?: number) => Promise<void>;
+  completeMission: (missionId: string, bonus_xp?: number, overrideXp?: number) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -96,9 +96,9 @@ const generateNewUserMissions = async (level: number): Promise<Mission[]> => {
     try {
       const existingIds = staticMissions.map(m => m.id);
       
-      const dailyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_DAILY, category: 'Harian' });
-      const weeklyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_WEEKLY, category: 'Mingguan' });
-      const monthlyPromise = generateMissions({ level, existingMissionIds: existingIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
+      const dailyPromise = generateMissions({ level, existing_mission_ids: existingIds, count: NUM_DAILY, category: 'Harian' });
+      const weeklyPromise = generateMissions({ level, existing_mission_ids: existingIds, count: NUM_WEEKLY, category: 'Mingguan' });
+      const monthlyPromise = generateMissions({ level, existing_mission_ids: existingIds, count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
       
       const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([dailyPromise, weeklyPromise, monthlyPromise]);
       
@@ -143,7 +143,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     // Step 1: Fetch all posts
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
-      .select('*') // Simpler query
+      .select('*')
       .order('timestamp', { ascending: false });
 
     if (postsError) {
@@ -189,14 +189,14 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     if (!userToUpdate.last_daily_reset || !isToday(new Date(userToUpdate.last_daily_reset))) {
         missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Harian');
-        const { missions: newDaily } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_DAILY, category: 'Harian' });
+        const { missions: newDaily } = await generateMissions({ level: userToUpdate.level, existing_mission_ids: missionsToUpdate.map(m => m.id), count: NUM_DAILY, category: 'Harian' });
         missionsToUpdate.push(...newDaily);
         userToUpdate.last_daily_reset = now.toISOString();
         needsDbUpdate = true;
     }
     if (!userToUpdate.last_weekly_reset || !isThisWeek(new Date(userToUpdate.last_weekly_reset), { weekStartsOn: 1 })) {
         missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Mingguan');
-        const { missions: newWeekly } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_WEEKLY, category: 'Mingguan' });
+        const { missions: newWeekly } = await generateMissions({ level: userToUpdate.level, existing_mission_ids: missionsToUpdate.map(m => m.id), count: NUM_WEEKLY, category: 'Mingguan' });
         missionsToUpdate.push(...newWeekly);
         userToUpdate.last_weekly_reset = now.toISOString();
         needsDbUpdate = true;
@@ -206,7 +206,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         const staticAutoMissionIds = new Set(staticMissions.filter(m => m.type === 'auto').map(m => m.id));
         const currentMissionIds = new Set(missionsToUpdate.map(m => m.id));
         userToUpdate.completed_missions = (userToUpdate.completed_missions || []).filter(id => currentMissionIds.has(id) || staticAutoMissionIds.has(id));
-        const { missions: newMonthly } = await generateMissions({ level: userToUpdate.level, existingMissionIds: missionsToUpdate.map(m => m.id), count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
+        const { missions: newMonthly } = await generateMissions({ level: userToUpdate.level, existing_mission_ids: missionsToUpdate.map(m => m.id), count: NUM_MONTHLY - staticMissions.length, category: 'Bulanan' });
         missionsToUpdate.push(...newMonthly);
         userToUpdate.last_monthly_reset = now.toISOString();
         needsDbUpdate = true;
@@ -246,12 +246,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       }
       
       // Ensure arrays are never null
-      const appUser = {
+      const appUser: User = {
           ...userProfile,
           missions: userProfile.missions || [],
           completed_missions: userProfile.completed_missions || [],
           unlocked_reward_ids: userProfile.unlocked_reward_ids || [],
-      } as User;
+      };
 
       const { updatedUser, needsDbUpdate } = await processUserSession(appUser);
       
@@ -385,7 +385,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   };
 
-  const completeMission = async (missionId: string, bonusXp = 0, overrideXp?: number) => {
+  const completeMission = async (missionId: string, bonus_xp = 0, overrideXp?: number) => {
     if (!currentUser) return;
 
     const mission = currentUser.missions.find((m) => m.id === missionId);
@@ -393,7 +393,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
     const coinsFromMission = mission.coins || 0;
-    const totalXpGained = xpFromMission + bonusXp;
+    const totalXpGained = xpFromMission + bonus_xp;
 
     const newXp = currentUser.xp + totalXpGained;
     const newCoins = (currentUser.coins || 0) + coinsFromMission;
@@ -421,7 +421,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             try {
                 const { missions: newMissions } = await generateMissions({
                     level: newLevel,
-                    existingMissionIds: finalMissionsList.map(m => m.id),
+                    existing_mission_ids: finalMissionsList.map(m => m.id),
                     count: 1,
                     category: 'Harian'
                 });
@@ -466,7 +466,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const updateUser = async (updatedData: Partial<Pick<User, 'name' | 'avatar_url'>>) => {
     if (!currentUser) return;
     const originalUser = { ...currentUser };
-    const optimisticUser = { ...currentUser, ...updatedData };
+    
+    // Optimistic update
+    const optimisticUser: User = { ...currentUser, ...updatedData };
     setCurrentUser(optimisticUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === optimisticUser.id ? optimisticUser : u));
 
@@ -477,9 +479,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         toast({ 
             title: 'Gagal Memperbarui Profil', 
             variant: 'destructive',
-            description: `Terjadi kesalahan: ${error.message}. Periksa kebijakan RLS Anda.`
+            description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).`
         });
-        console.error("Error updating profile:", error, "Payload:", updatedData);
+        console.error("Error updating profile:", error);
         // Revert optimistic update
         setCurrentUser(originalUser);
         setAllUsers(prevUsers => prevUsers.map(u => u.id === originalUser.id ? originalUser : u));
@@ -558,6 +560,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         return;
     }
     
+    // Optimistic UI update
     const postWithAuthor: ForumPost = { 
         ...(data as ForumPost), 
         comments: [],
@@ -584,6 +587,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         return;
     }
 
+    // Optimistic UI update
     const newComment: ForumComment = {
         ...(data as ForumComment),
         author: { name: currentUser.name, avatar_url: currentUser.avatar_url },

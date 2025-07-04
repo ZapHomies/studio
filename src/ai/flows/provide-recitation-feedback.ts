@@ -11,7 +11,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ProvideRecitationFeedbackInputSchema = z.object({
-  audioDataUri: z
+  audio_data_uri: z
     .string()
     .describe(
       'Data audio pengguna yang sedang membaca Al-Quran, sebagai URI data yang harus menyertakan tipe MIME dan menggunakan enkode Base64. Format yang diharapkan: \'data:<mimetype>;base64,<encoded_data>\'.'
@@ -42,7 +42,7 @@ const prompt = ai.definePrompt({
 
   Dengarkan audio yang diberikan dan berikan umpan balik tentang pengucapan mereka, secara spesifik menunjukkan kesalahan dalam Tajwid. Berikan semangat dan dukungan, serta fokus pada area spesifik untuk perbaikan.
 
-  Audio: {{media url=audioDataUri}}`,
+  Audio: {{media url=audio_data_uri}}`,
 });
 
 const provideRecitationFeedbackFlow = ai.defineFlow(

@@ -68,9 +68,9 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
                       <Coins className="mr-1 h-3 w-3" />
                       {mission.coins || 0}
                     </Badge>
-                    {mission.bonusXp && (
+                    {mission.bonus_xp && (
                     <Badge variant="default" className="bg-amber-500 text-white hover:bg-amber-600">
-                        <Zap className="mr-1 h-3 w-3" /> +{mission.bonusXp} XP Bonus
+                        <Zap className="mr-1 h-3 w-3" /> +{mission.bonus_xp} XP Bonus
                     </Badge>
                     )}
                 </div>

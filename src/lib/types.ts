@@ -27,7 +27,7 @@ export interface Mission {
   xp: number;
   coins: number;
   type: 'photo' | 'action' | 'auto';
-  bonusXp?: number;
+  bonus_xp?: number;
   category: 'Harian' | 'Mingguan' | 'Bulanan';
 }
 
