@@ -126,17 +126,56 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   // --- DATA FETCHING & SYNC ---
 
   const fetchForumData = useCallback(async () => {
-    const { data, error } = await supabase
+    // Step 1: Fetch all posts and join with author info
+    const { data: postsData, error: postsError } = await supabase
       .from('posts')
-      .select('*, author:authorId(name, avatarUrl), comments(*)')
+      .select('*, author:authorId(name, avatarUrl)')
       .order('timestamp', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching posts:', error);
-      toast({ title: 'Gagal Memuat Forum', variant: 'destructive' });
+    if (postsError) {
+      console.error('Error fetching posts:', postsError);
+      toast({ 
+        title: 'Gagal Memuat Postingan Forum', 
+        variant: 'destructive', 
+        description: postsError.message 
+      });
       return;
     }
-    setPosts(data as any[] || []);
+
+    if (!postsData) {
+      setPosts([]);
+      return;
+    }
+
+    // Step 2: Fetch all comments
+    const { data: commentsData, error: commentsError } = await supabase
+      .from('comments')
+      .select('*')
+      .order('timestamp', { ascending: true });
+    
+    if (commentsError) {
+      console.error('Error fetching comments:', commentsError);
+      toast({ 
+        title: 'Gagal Memuat Komentar Forum', 
+        variant: 'destructive', 
+        description: commentsError.message 
+      });
+      // Still show posts even if comments fail to load
+      const postsWithoutComments = postsData.map(post => ({ ...post, comments: [] }));
+      setPosts(postsWithoutComments as any[] || []);
+      return;
+    }
+
+    // Step 3: Combine posts and comments in the client
+    const postsWithComments = postsData.map(post => {
+      const postComments = (commentsData || []).filter(comment => comment.postId === post.id);
+      return {
+        ...post,
+        comments: postComments,
+      };
+    });
+
+    setPosts(postsWithComments as any[] || []);
   }, [toast]);
   
   const fetchAllUsers = useCallback(async () => {
@@ -248,7 +287,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         setCurrentUser(updatedUser);
       }
       
-      await Promise.all([fetchForumData(), fetchAllUsers()]);
+      await Promise.all([fetchAllUsers(), fetchForumData()]);
       setIsLoading(false);
     });
 
@@ -315,9 +354,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const { error: updateError } = await supabase
         .from('users')
         .update(fullProfileData)
-        .eq('id', authData.user.id)
-        .select()
-        .single();
+        .eq('id', authData.user.id);
       
       if (updateError) {
         // Ini tidak kritis, pengguna sudah dibuat. Kita bisa catat errornya.
