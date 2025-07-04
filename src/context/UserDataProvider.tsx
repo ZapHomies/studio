@@ -125,11 +125,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   // --- DATA FETCHING & SYNC ---
 
-  const fetchForumData = useCallback(async () => {
-    // Step 1: Fetch all posts and join with author info
+  const fetchForumData = useCallback(async (users: User[]) => {
+    // Step 1: Fetch all posts, simplified query
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
-      .select('*, author:authorId(name, avatarUrl)')
+      .select('*')
       .order('timestamp', { ascending: false });
 
     if (postsError) {
@@ -137,7 +137,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       toast({ 
         title: 'Gagal Memuat Postingan Forum', 
         variant: 'destructive', 
-        description: postsError.message 
+        description: `Error: ${postsError.message}`
       });
       return;
     }
@@ -158,27 +158,34 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       toast({ 
         title: 'Gagal Memuat Komentar Forum', 
         variant: 'destructive', 
-        description: commentsError.message 
+        description: `Error: ${commentsError.message}` 
       });
-      // Still show posts even if comments fail to load
-      const postsWithoutComments = postsData.map(post => ({ ...post, comments: [] }));
-      setPosts(postsWithoutComments as any[] || []);
-      return;
+      // Still process posts even if comments fail
     }
 
-    // Step 3: Combine posts and comments in the client
+    // Step 3: Combine posts, comments, and users on the client
+    const usersById = users.reduce((acc, user) => {
+        acc[user.id] = user;
+        return acc;
+    }, {} as Record<string, User>);
+    
     const postsWithComments = postsData.map(post => {
       const postComments = (commentsData || []).filter(comment => comment.postId === post.id);
+      const author = usersById[post.authorId];
       return {
         ...post,
-        comments: postComments,
+        author: author ? { name: author.name, avatarUrl: author.avatarUrl } : undefined,
+        comments: postComments.map(c => ({
+            ...c,
+            author: usersById[c.authorId] ? {name: usersById[c.authorId].name, avatarUrl: usersById[c.authorId].avatarUrl} : undefined,
+        })),
       };
     });
 
     setPosts(postsWithComments as any[] || []);
   }, [toast]);
   
-  const fetchAllUsers = useCallback(async () => {
+  const fetchAllUsers = useCallback(async (): Promise<User[] | null> => {
     const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -186,8 +193,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
         console.error('Error fetching all users:', error);
+        setAllUsers([]);
+        return null;
     } else {
         setAllUsers(data || []);
+        return data || [];
     }
   }, []);
 
@@ -287,7 +297,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         setCurrentUser(updatedUser);
       }
       
-      await Promise.all([fetchAllUsers(), fetchForumData()]);
+      const users = await fetchAllUsers();
+      if (users) {
+        await fetchForumData(users);
+      }
       setIsLoading(false);
     });
 
@@ -313,7 +326,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (authError) {
-        throw new Error(authError.message);
+         if (authError.message.toLowerCase().includes('user already registered')) {
+            toast({
+              title: 'Email Sudah Terdaftar',
+              description: 'Email ini sudah digunakan. Silakan coba login atau gunakan email lain.',
+              variant: 'destructive',
+            });
+          } else {
+            throw new Error(authError.message);
+          }
+          return; // Stop execution
       }
       if (!authData.user) {
         throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
@@ -358,20 +380,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         console.error("Gagal memperbarui profil dengan data lengkap:", updateError.message);
         toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda.', variant: 'default' });
       } else {
-        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Periksa email Anda untuk verifikasi jika diperlukan.', variant: 'success' });
+        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Silakan cek email Anda untuk konfirmasi jika diperlukan.', variant: 'success' });
       }
 
     } catch (error: any) {
       console.error("Register failed:", error);
-      if (error.message && error.message.toLowerCase().includes('user already registered')) {
-        toast({
-          title: 'Email Sudah Terdaftar',
-          description: 'Email ini sudah digunakan. Silakan coba login atau gunakan email lain.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({ title: 'Pendaftaran Gagal', description: error.message, variant: 'destructive' });
-      }
+      toast({ title: 'Pendaftaran Gagal', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -381,7 +395,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast({ title: 'Login Gagal', description: error.message, variant: 'destructive' });
+      toast({ title: 'Login Gagal', description: "Email atau password salah, atau akun belum dikonfirmasi.", variant: 'destructive' });
     }
     setIsLoading(false);
   };

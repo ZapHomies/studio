@@ -22,7 +22,7 @@ const fontBody = PT_Sans({
 });
 
 function AppBody({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useContext(UserDataContext);
+  const { isAuthenticated } = useContext(UserDataContext);
 
   return (
     <div className="relative flex min-h-screen w-full flex-col">
@@ -30,7 +30,7 @@ function AppBody({ children }: { children: React.ReactNode }) {
        <main className={cn("flex-1", isAuthenticated && "pb-24 pt-16 sm:pt-8")}>
          {children}
        </main>
-       {isAuthenticated && !isLoading && <BottomNav />}
+       {isAuthenticated && <BottomNav />}
        <Toaster />
     </div>
   );
