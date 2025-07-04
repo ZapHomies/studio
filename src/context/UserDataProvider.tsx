@@ -263,21 +263,17 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-
-    if (authError) {
-        toast({ title: 'Pendaftaran Gagal', description: authError.message, variant: 'destructive' });
-        setIsLoading(false);
-        return;
-    }
-
-    if (!authData.user) {
-        toast({ title: 'Pendaftaran Gagal', description: 'Gagal membuat pengguna.', variant: 'destructive' });
-        setIsLoading(false);
-        return;
-    }
-
     try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+
+      if (authError) {
+          throw new Error(authError.message);
+      }
+
+      if (!authData.user) {
+          throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
+      }
+
       const now = new Date();
       const initialMissions = await generateNewUserMissions(1);
       
@@ -304,16 +300,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const { error: insertError } = await supabase.from('users').insert(newUserProfile);
 
       if (insertError) {
-        console.error("Supabase insert error object:", insertError);
-        const errorMessage = insertError.message || "Gagal membuat profil. Pastikan tabel 'users' ada di database Supabase Anda dan kebijakan RLS (jika aktif) mengizinkan penyisipan oleh pengguna baru.";
-        throw new Error(errorMessage);
+        console.error("Supabase insert error object:", JSON.stringify(insertError, null, 2));
+        const detailedMessage = `Gagal menyimpan profil ke database. Ini kemungkinan besar disebabkan karena tabel 'users' (dan/atau 'posts', 'comments') belum dibuat di database Anda. Harap jalankan skrip SQL yang diberikan untuk membuat tabel-tabel ini. Pesan dari Supabase: ${insertError.message || 'Tidak ada pesan spesifik.'}`;
+        throw new Error(detailedMessage);
       }
       
       toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
     
     } catch (error: any) {
         console.error("Register failed:", error);
-        toast({ title: 'Pendaftaran Gagal', description: 'Gagal menyimpan profil Anda. ' + error.message, variant: 'destructive' });
+        toast({ title: 'Pendaftaran Gagal', description: error.message, variant: 'destructive' });
     } finally {
         setIsLoading(false);
     }
