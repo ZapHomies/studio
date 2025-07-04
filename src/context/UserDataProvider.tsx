@@ -123,6 +123,33 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const missions = currentUser?.missions || [];
   const isAuthenticated = !!currentUser;
 
+  const createNewUserProfile = async (userId: string, name: string, email: string) => {
+    const initialMissions = await generateNewUserMissions(1);
+    const now = new Date();
+
+    const newUserPayload = {
+      id: userId,
+      name,
+      email,
+      avatar_url: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
+      level: 1,
+      xp: 0,
+      xp_to_next_level: getTotalXpForLevel(2),
+      coins: 100,
+      completed_missions: [],
+      missions: initialMissions,
+      title: getTitleForLevel(1),
+      last_daily_reset: now.toISOString(),
+      last_weekly_reset: now.toISOString(),
+      last_monthly_reset: now.toISOString(),
+      has_seen_welcome: false,
+      unlocked_reward_ids: ['border-welcome'],
+      active_border_id: 'border-welcome',
+    };
+
+    return supabase.from('users').insert(newUserPayload).select().single();
+  };
+
   // --- DATA FETCHING & SYNC ---
 
   const fetchAllUsers = useCallback(async (): Promise<void> => {
@@ -230,12 +257,31 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const { data: userProfile, error } = await supabase
+      let { data: userProfile, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', session.user.id)
         .single();
       
+      // Self-healing logic for users who exist in auth but not in public.users
+      if (!userProfile && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+          console.log("User profile not found, attempting to create one (self-healing).");
+          const userName = session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Pengguna Baru';
+          
+          const { data: newUser, error: creationError } = await createNewUserProfile(session.user.id, userName, session.user.email!);
+
+          if (creationError) {
+              console.error('Self-healing failed. Could not create user profile:', creationError);
+              toast({ title: 'Gagal Memulihkan Akun', description: `Gagal membuat profil Anda: ${creationError.message}. Silakan coba login kembali.`, variant: 'destructive'});
+              await supabase.auth.signOut();
+              setIsLoading(false);
+              return;
+          }
+
+          userProfile = newUser;
+          error = null;
+      }
+
       if (error || !userProfile) {
         console.error('Error fetching user profile or profile not found:', error);
         if (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') {
@@ -245,9 +291,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Ensure arrays are never null
       const appUser: User = {
-          ...userProfile,
+          ...(userProfile as User),
           missions: userProfile.missions || [],
           completed_missions: userProfile.completed_missions || [],
           unlocked_reward_ids: userProfile.unlocked_reward_ids || [],
@@ -304,6 +349,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name: name, // Store the name in metadata as a fallback
+          },
+        },
       });
 
       if (authError) {
@@ -322,36 +372,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
       }
       
-      const initialMissions = await generateNewUserMissions(1);
-      const now = new Date();
+      const { error: creationError } = await createNewUserProfile(authData.user.id, name, email);
 
-      const newUserPayload = {
-        id: authData.user.id,
-        name,
-        email,
-        avatar_url: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
-        level: 1,
-        xp: 0,
-        xp_to_next_level: getTotalXpForLevel(2),
-        coins: 100,
-        title: getTitleForLevel(1),
-        completed_missions: [],
-        missions: initialMissions,
-        last_daily_reset: now.toISOString(),
-        last_weekly_reset: now.toISOString(),
-        last_monthly_reset: now.toISOString(),
-        has_seen_welcome: false,
-        unlocked_reward_ids: ['border-welcome'],
-        active_border_id: 'border-welcome',
-      };
-
-      const { error: insertError } = await supabase.from('users').insert(newUserPayload);
-
-      if (insertError) {
-          console.error("Gagal membuat profil lengkap:", insertError);
+      if (creationError) {
+          console.error("Gagal membuat profil lengkap:", creationError);
           toast({
             title: 'Gagal Menyimpan Profil',
-            description: `Akun Anda berhasil dibuat, tetapi gagal menyimpan detail profil ke database. Error: ${insertError.message}. Ini kemungkinan besar disebabkan oleh masalah izin database (Row Level Security).`,
+            description: `Akun Anda berhasil dibuat, tetapi gagal menyimpan detail profil. Saat Anda login, sistem akan mencoba memperbaikinya. Error: ${creationError.message}.`,
             variant: 'destructive',
             duration: 15000,
           });
@@ -378,7 +405,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       toast({ title: 'Login Gagal', description: "Email atau password salah. Pastikan akun sudah dikonfirmasi jika diperlukan.", variant: 'destructive' });
     }
-    setIsLoading(false);
+    // Set isLoading to false only on error; on success, onAuthStateChange will handle it.
+    if(error) setIsLoading(false);
   };
   
   const logout = async () => {
@@ -418,12 +446,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         missions: currentUser.missions.filter(m => m.category === 'Harian' ? m.id !== missionId : true),
     };
     
-    // For non-daily missions, we keep them in the list but mark as complete client-side
-    // This logic is handled by checking currentUser.completed_missions in the component.
     if (mission.category !== 'Harian') {
        updatedUser.missions = currentUser.missions;
     }
-
 
     setCurrentUser(updatedUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? updatedUser : u));
@@ -466,7 +491,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         }
     })();
 
-
     if (leveledUp) {
         toast({
             title: 'Naik Level!',
@@ -480,7 +504,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     const originalUser = { ...currentUser };
     
-    // Optimistic update
     const optimisticUser: User = { ...currentUser, ...updatedData };
     setCurrentUser(optimisticUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === optimisticUser.id ? optimisticUser : u));
@@ -495,7 +518,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).`
         });
         console.error("Error updating profile:", error);
-        // Revert optimistic update
         setCurrentUser(originalUser);
         setAllUsers(prevUsers => prevUsers.map(u => u.id === originalUser.id ? originalUser : u));
     } else {
@@ -569,15 +591,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
         console.error("Error creating post:", error, "Payload:", newPostData);
-        toast({ title: 'Gagal Membuat Postingan', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}. Periksa kebijakan RLS Anda.` });
+        toast({ title: 'Gagal Membuat Postingan', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}.` });
         return;
     }
     
-    // Optimistic UI update
     const postWithAuthor: ForumPost = { 
         ...(data as ForumPost), 
         comments: [],
-        author: { name: currentUser.name, avatar_url: currentUser.avatar_url }
     };
     setPosts(prevPosts => [postWithAuthor, ...prevPosts].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     toast({ title: 'Postingan Dibuat!', variant: 'success' });
@@ -596,15 +616,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
         console.error("Error adding comment:", error, "Payload:", newCommentData);
-        toast({ title: 'Gagal Menambah Komentar', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}. Periksa kebijakan RLS Anda.`});
+        toast({ title: 'Gagal Menambah Komentar', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}.`});
         return;
     }
 
-    // Optimistic UI update
-    const newComment: ForumComment = {
-        ...(data as ForumComment),
-        author: { name: currentUser.name, avatar_url: currentUser.avatar_url },
-    };
+    const newComment: ForumComment = data as ForumComment;
 
     setPosts(prevPosts =>
         prevPosts.map(post => {
@@ -620,5 +636,3 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
 };
-
-    
