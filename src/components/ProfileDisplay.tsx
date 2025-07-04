@@ -29,8 +29,8 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
   
   const activeBorder = useMemo(() => {
       if (!currentUser) return null;
-      return rewards.find(r => r.type === 'border' && r.id === currentUser.activeBorderId);
-  }, [currentUser?.activeBorderId]);
+      return rewards.find(r => r.type === 'border' && r.id === currentUser.active_border_id);
+  }, [currentUser?.active_border_id]);
   
   const xpForCurrentLevelStart = useMemo(() => {
     if (!currentUser) return 0;
@@ -41,14 +41,14 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
     return null; 
   }
   
-  const xpForNextLevelStart = currentUser.xpToNextLevel;
+  const xpForNextLevelStart = currentUser.xp_to_next_level;
   const totalXpForThisLevel = xpForNextLevelStart - xpForCurrentLevelStart;
   const xpEarnedThisLevel = currentUser.xp - xpForCurrentLevelStart;
   const progressPercentage = totalXpForThisLevel > 0 ? (xpEarnedThisLevel / totalXpForThisLevel) * 100 : 0;
   
   const AvatarContent = () => (
     <>
-      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+      <AvatarImage src={currentUser.avatar_url} alt={currentUser.name} />
       <AvatarFallback className="text-5xl">{currentUser.name.charAt(0)}</AvatarFallback>
     </>
   );
@@ -104,7 +104,7 @@ export default function ProfileDisplay({ onOpenRewards }: ProfileDisplayProps) {
                       <CardTitle className="flex items-center justify-center gap-2 text-sm font-semibold text-muted-foreground"><CheckCircle className="h-4 w-4"/>Misi Selesai</CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 pt-0 text-center">
-                      <p className="font-headline text-3xl sm:text-4xl">{currentUser.completedMissions.length}</p>
+                      <p className="font-headline text-3xl sm:text-4xl">{currentUser.completed_missions.length}</p>
                   </CardContent>
                </Card>
             </div>

@@ -76,7 +76,7 @@ export default function RecitationTool() {
         // Auto-complete mission logic
         if (currentUser) {
             const quranMission = missions.find(m => m.id === 'monthly-quran-recite');
-            if (quranMission && !currentUser.completedMissions.includes(quranMission.id)) {
+            if (quranMission && !currentUser.completed_missions.includes(quranMission.id)) {
                 // Simplified XP calculation
                 const xpGained = Math.min(200, 50); 
                 await completeMission(quranMission.id, 0, xpGained);

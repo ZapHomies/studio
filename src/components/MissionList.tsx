@@ -15,7 +15,7 @@ const MissionCard = ({ mission, onAction, onOpenDialog, isCompleting }: { missio
     
     if (!currentUser) return null;
 
-    const isCompleted = currentUser.completedMissions.includes(mission.id);
+    const isCompleted = currentUser.completed_missions.includes(mission.id);
 
     const renderMissionButton = () => {
         if (isCompleted) {
@@ -141,7 +141,7 @@ export default function MissionList() {
 
     // Daily missions are removed from the list upon completion, so an empty list means they're all done.
     // For other categories, we check if all missions in the list have been completed.
-    const allCompleted = missionList.length > 0 && missionList.every(m => currentUser.completedMissions.includes(m.id));
+    const allCompleted = missionList.length > 0 && missionList.every(m => currentUser.completed_missions.includes(m.id));
     const showCompletionCard = allCompleted || (title === 'Misi Harian' && missionList.length === 0);
 
     return (

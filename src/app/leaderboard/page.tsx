@@ -29,7 +29,7 @@ function LeaderboardRow({ user, rank }: { user: User; rank: number }) {
       <TableCell>
         <div className="flex items-center gap-4">
           <Avatar className="h-10 w-10 border-2 border-primary/50 sm:h-12 sm:w-12">
-            <AvatarImage src={user.avatarUrl} alt={user.name} />
+            <AvatarImage src={user.avatar_url} alt={user.name} />
             <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>

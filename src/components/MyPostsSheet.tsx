@@ -26,7 +26,7 @@ interface MyPostsSheetProps {
 export default function MyPostsSheet({ isOpen, onOpenChange }: MyPostsSheetProps) {
   const { currentUser, posts } = useContext(UserDataContext);
 
-  const myPosts = posts.filter(p => p.authorId === currentUser?.id)
+  const myPosts = posts.filter(p => p.author_id === currentUser?.id)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return (

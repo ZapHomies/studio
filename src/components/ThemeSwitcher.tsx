@@ -17,7 +17,7 @@ export default function ThemeSwitcher() {
       return themes.filter(t => ['Default', 'Midnight', 'Oasis', 'Rosewater', 'Emerald'].includes(t.name));
     }
     
-    const unlockedThemeRewards = allRewards.filter(r => r.type === 'theme' && currentUser.unlockedRewardIds.includes(r.id));
+    const unlockedThemeRewards = allRewards.filter(r => r.type === 'theme' && currentUser.unlocked_reward_ids.includes(r.id));
     const unlockedThemeNames = unlockedThemeRewards.map(r => r.value);
     
     const defaultThemes = ['Default', 'Midnight', 'Oasis', 'Rosewater', 'Emerald'];

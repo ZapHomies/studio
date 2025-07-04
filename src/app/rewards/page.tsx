@@ -16,7 +16,7 @@ const RewardCard = ({ reward, isRamadan }: { reward: Reward; isRamadan: boolean 
 
     if (!currentUser) return null;
 
-    const isUnlocked = currentUser.unlockedRewardIds.includes(reward.id);
+    const isUnlocked = currentUser.unlocked_reward_ids.includes(reward.id);
     const canAfford = (currentUser.coins || 0) >= reward.cost;
     const isSeasonal = reward.season === 'Ramadan';
     const isEventActive = isRamadan;

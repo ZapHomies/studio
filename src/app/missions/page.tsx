@@ -13,7 +13,7 @@ export default function MissionsPage() {
   useEffect(() => {
     // Sedikit penundaan untuk memastikan transisi halaman selesai
     const timer = setTimeout(() => {
-      if (currentUser && !currentUser.hasSeenWelcome) {
+      if (currentUser && !currentUser.has_seen_welcome) {
         setIsWelcomeOpen(true);
       }
     }, 500);

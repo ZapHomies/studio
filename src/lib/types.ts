@@ -4,23 +4,23 @@ export interface User {
   id: string; // Will use Supabase Auth UUID
   name: string;
   email: string;
-  avatarUrl: string;
+  avatar_url: string;
   level: number;
   xp: number;
-  xpToNextLevel: number;
+  xp_to_next_level: number;
   coins: number;
-  completedMissions: string[];
+  completed_missions: string[];
   missions: Mission[]; // Missions are now stored per-user
   title: string;
   // Timestamps for reset logic
-  lastDailyReset: string;
-  lastWeeklyReset: string;
-  lastMonthlyReset: string;
+  last_daily_reset: string;
+  last_weekly_reset: string;
+  last_monthly_reset: string;
   // Flag for onboarding
-  hasSeenWelcome: boolean;
+  has_seen_welcome: boolean;
   // Rewards feature
-  unlockedRewardIds: string[];
-  activeBorderId: string | null;
+  unlocked_reward_ids: string[];
+  active_border_id: string | null;
 }
 
 export interface Mission {
@@ -47,21 +47,21 @@ export interface Reward {
 
 export interface ForumComment {
   id: string;
-  authorId: string;
-  postId: string;
+  author_id: string;
+  post_id: string;
   content: string;
   timestamp: string;
   // Joined data from users table
-  author?: Pick<User, 'name' | 'avatarUrl'>;
+  author?: Pick<User, 'name' | 'avatar_url'>;
 }
 
 export interface ForumPost {
   id:string;
-  authorId: string;
+  author_id: string;
   title: string;
   content: string;
   timestamp: string;
   comments: ForumComment[];
   // Joined data from users table
-  author?: Pick<User, 'name' | 'avatarUrl'>;
+  author?: Pick<User, 'name' | 'avatar_url'>;
 }

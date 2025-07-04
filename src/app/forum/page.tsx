@@ -38,7 +38,7 @@ function NewPostDialog({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
       toast({
@@ -50,7 +50,7 @@ function NewPostDialog({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange
     }
 
     setIsSubmitting(true);
-    createPost(title, content);
+    await createPost(title, content);
     setIsSubmitting(false);
     setTitle('');
     setContent('');
@@ -116,7 +116,7 @@ function Comment({ comment, author }: { comment: ForumComment, author: User | un
   return (
     <div className="flex items-start gap-3 py-3">
         <Avatar className="h-8 w-8 border">
-            <AvatarImage src={author.avatarUrl} alt={author.name} />
+            <AvatarImage src={author.avatar_url} alt={author.name} />
             <AvatarFallback>{author.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
@@ -156,13 +156,13 @@ function PostCard({ post, author }: { post: ForumPost, author: User | undefined 
                 <AccordionTrigger className="p-4 hover:no-underline hover:bg-muted/50">
                     <div className="flex items-start gap-4 text-left w-full">
                         <Avatar className="h-10 w-10 border">
-                            <AvatarImage src={author.avatarUrl} alt={author.name} />
-                            <AvatarFallback>{author.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={post.author?.avatar_url} alt={post.author?.name} />
+                            <AvatarFallback>{post.author?.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                             <h3 className="font-semibold text-base">{post.title}</h3>
                             <p className="text-sm text-muted-foreground">
-                                oleh {author.name} • {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: id })} • {post.comments.length} komentar
+                                oleh {post.author?.name} • {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: id })} • {post.comments.length} komentar
                             </p>
                         </div>
                     </div>
@@ -179,7 +179,7 @@ function PostCard({ post, author }: { post: ForumPost, author: User | undefined 
                                <ScrollArea className="h-72">
                                 <div className="pr-4">
                                   {sortedComments.map(comment => (
-                                      <Comment key={comment.id} comment={comment} author={allUsers.find(u => u.id === comment.authorId)} />
+                                      <Comment key={comment.id} comment={comment} author={allUsers.find(u => u.id === comment.author_id)} />
                                   ))}
                                 </div>
                                </ScrollArea>
@@ -191,7 +191,7 @@ function PostCard({ post, author }: { post: ForumPost, author: User | undefined 
                          {currentUser && (
                             <form onSubmit={handleCommentSubmit} className="flex items-start gap-2 pt-4">
                                <Avatar className="h-9 w-9 border">
-                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                    <AvatarImage src={currentUser.avatar_url} alt={currentUser.name} />
                                     <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <Textarea 
@@ -248,7 +248,7 @@ export default function ForumPage() {
       <main className="space-y-4">
         {sortedPosts.length > 0 ? (
             sortedPosts.map(post => (
-                <PostCard key={post.id} post={post} author={usersById[post.authorId]} />
+                <PostCard key={post.id} post={post} author={usersById[post.author_id]} />
             ))
         ) : (
             <Card className="text-center p-10 border-dashed">
