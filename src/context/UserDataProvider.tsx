@@ -44,6 +44,30 @@ const getTitleForLevel = (level: number): string => {
   return 'Muslim Baru';
 };
 
+// Helper function to convert a Supabase DB user object (snake_case) to an application User object (camelCase)
+const fromSupabaseUser = (dbUser: any): User => {
+    if (!dbUser) return dbUser;
+    return {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        avatarUrl: dbUser.avatar_url,
+        level: dbUser.level,
+        xp: dbUser.xp,
+        xpToNextLevel: dbUser.xp_to_next_level,
+        coins: dbUser.coins,
+        completedMissions: dbUser.completed_missions || [],
+        missions: dbUser.missions || [],
+        title: dbUser.title,
+        lastDailyReset: dbUser.last_daily_reset,
+        lastWeeklyReset: dbUser.last_weekly_reset,
+        lastMonthlyReset: dbUser.last_monthly_reset,
+        hasSeenWelcome: dbUser.has_seen_welcome,
+        unlockedRewardIds: dbUser.unlocked_reward_ids || [],
+        activeBorderId: dbUser.active_border_id,
+    };
+};
+
 
 // --- CONTEXT DEFINITION ---
 
@@ -126,7 +150,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   // --- DATA FETCHING & SYNC ---
 
   const fetchForumData = useCallback(async (users: User[]) => {
-    // Step 1: Fetch all posts, simplified query
+    // Step 1: Fetch all posts
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select('*')
@@ -160,7 +184,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         variant: 'destructive', 
         description: `Error: ${commentsError.message}` 
       });
-      // Still process posts even if comments fail
     }
 
     // Step 3: Combine posts, comments, and users on the client
@@ -170,19 +193,30 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     }, {} as Record<string, User>);
     
     const postsWithComments = postsData.map(post => {
-      const postComments = (commentsData || []).filter(comment => comment.postId === post.id);
-      const author = usersById[post.authorId];
+      const postComments = (commentsData || [])
+        .filter(comment => comment.post_id === post.id)
+        .map(c => ({
+            id: c.id,
+            authorId: c.author_id,
+            postId: c.post_id,
+            content: c.content,
+            timestamp: c.timestamp,
+            author: usersById[c.author_id] ? {name: usersById[c.author_id].name, avatarUrl: usersById[c.author_id].avatarUrl} : undefined,
+        }));
+      
+      const author = usersById[post.author_id];
       return {
-        ...post,
+        id: post.id,
+        authorId: post.author_id,
+        title: post.title,
+        content: post.content,
+        timestamp: post.timestamp,
         author: author ? { name: author.name, avatarUrl: author.avatarUrl } : undefined,
-        comments: postComments.map(c => ({
-            ...c,
-            author: usersById[c.authorId] ? {name: usersById[c.authorId].name, avatarUrl: usersById[c.authorId].avatarUrl} : undefined,
-        })),
+        comments: postComments,
       };
     });
 
-    setPosts(postsWithComments as any[] || []);
+    setPosts(postsWithComments || []);
   }, [toast]);
   
   const fetchAllUsers = useCallback(async (): Promise<User[] | null> => {
@@ -196,8 +230,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         setAllUsers([]);
         return null;
     } else {
-        setAllUsers(data || []);
-        return data || [];
+        const appUsers = (data || []).map(fromSupabaseUser);
+        setAllUsers(appUsers);
+        return appUsers;
     }
   }, []);
 
@@ -205,11 +240,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     let userToUpdate = { ...user };
     let needsDbUpdate = false;
     const now = new Date();
-
-    // Sanitize nullable arrays to prevent downstream errors.
-    if (!userToUpdate.missions) userToUpdate.missions = [];
-    if (!userToUpdate.completedMissions) userToUpdate.completedMissions = [];
-    if (!userToUpdate.unlockedRewardIds) userToUpdate.unlockedRewardIds = [];
     
     let missionsToUpdate = [...userToUpdate.missions];
 
@@ -271,17 +301,20 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      const { updatedUser, needsDbUpdate } = await processUserSession(userProfile);
+      // Convert DB data to app data and sanitize
+      const appUser = fromSupabaseUser(userProfile);
+      
+      const { updatedUser, needsDbUpdate } = await processUserSession(appUser);
       
       if (needsDbUpdate) {
         const { data: finalUser, error: updateError } = await supabase
             .from('users')
             .update({
                 missions: updatedUser.missions,
-                lastDailyReset: updatedUser.lastDailyReset,
-                lastWeeklyReset: updatedUser.lastWeeklyReset,
-                lastMonthlyReset: updatedUser.lastMonthlyReset,
-                completedMissions: updatedUser.completedMissions
+                last_daily_reset: updatedUser.lastDailyReset,
+                last_weekly_reset: updatedUser.lastWeeklyReset,
+                last_monthly_reset: updatedUser.lastMonthlyReset,
+                completed_missions: updatedUser.completedMissions
             })
             .eq('id', updatedUser.id)
             .select()
@@ -291,7 +324,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             console.error("Error saving session updates to DB:", updateError);
             setCurrentUser(updatedUser); // use optimistically
         } else {
-            setCurrentUser(finalUser);
+            setCurrentUser(fromSupabaseUser(finalUser));
         }
       } else {
         setCurrentUser(updatedUser);
@@ -335,7 +368,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
           } else {
             throw new Error(authError.message);
           }
-          return; // Stop execution
+          return;
       }
       if (!authData.user) {
         throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
@@ -347,27 +380,27 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         .insert(minimalProfileData);
 
       if (insertError) {
-        console.error("Supabase insert error object:", insertError);
-        const errorMessage = insertError.message || "Gagal membuat profil. Pastikan tabel 'users' ada di database Supabase Anda dan kebijakan RLS (jika aktif) mengizinkan penyisipan oleh pengguna baru.";
+        const errorMessage = insertError.message || `Gagal membuat profil. Pastikan tabel 'users' ada di database Supabase Anda dan kebijakan RLS (jika aktif) mengizinkan penyisipan oleh pengguna baru.`;
         throw new Error(errorMessage);
       }
       
       const initialMissions = await generateNewUserMissions(1);
       const now = new Date();
+      // Use snake_case for the DB payload
       const fullProfileData = {
-        avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
+        avatar_url: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
         level: 1,
         xp: 0,
-        xpToNextLevel: getTotalXpForLevel(2),
+        xp_to_next_level: getTotalXpForLevel(2),
         coins: 100,
         title: getTitleForLevel(1),
-        completedMissions: [],
-        lastDailyReset: now.toISOString(),
-        lastWeeklyReset: now.toISOString(),
-        lastMonthlyReset: now.toISOString(),
-        hasSeenWelcome: false,
-        unlockedRewardIds: ['border-welcome'],
-        activeBorderId: 'border-welcome',
+        completed_missions: [],
+        last_daily_reset: now.toISOString(),
+        last_weekly_reset: now.toISOString(),
+        last_monthly_reset: now.toISOString(),
+        has_seen_welcome: false,
+        unlocked_reward_ids: ['border-welcome'],
+        active_border_id: 'border-welcome',
         missions: initialMissions,
       };
       
@@ -378,7 +411,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       
       if (updateError) {
         console.error("Gagal memperbarui profil dengan data lengkap:", updateError.message);
-        toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda.', variant: 'default' });
+        toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda. Silakan cek email Anda untuk konfirmasi.', variant: 'default' });
       } else {
         toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Silakan cek email Anda untuk konfirmasi jika diperlukan.', variant: 'success' });
       }
@@ -429,7 +462,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const updatedCompletedMissions = [...currentUser.completedMissions, missionId];
     const newMissionsList = currentUser.missions.filter(m => m.id !== missionId);
     
-    const optimisticUserUpdate = {
+    const optimisticUserUpdate: User = {
         ...currentUser,
         xp: newXp,
         coins: newCoins,
@@ -466,8 +499,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             coins: newCoins,
             level: newLevel,
             title: getTitleForLevel(newLevel),
-            xpToNextLevel: getTotalXpForLevel(newLevel + 1),
-            completedMissions: updatedCompletedMissions,
+            xp_to_next_level: getTotalXpForLevel(newLevel + 1),
+            completed_missions: updatedCompletedMissions,
             missions: finalMissionsList,
         };
         
@@ -498,7 +531,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setCurrentUser(optimisticUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === optimisticUser.id ? optimisticUser : u));
 
-    const { error } = await supabase.from('users').update(updatedData).eq('id', currentUser.id);
+    // Convert camelCase keys from app to snake_case for Supabase
+    const dbUpdateData: { [key: string]: any } = {};
+    if (updatedData.name !== undefined) dbUpdateData.name = updatedData.name;
+    if (updatedData.avatarUrl !== undefined) dbUpdateData.avatar_url = updatedData.avatarUrl;
+
+    const { error } = await supabase.from('users').update(dbUpdateData).eq('id', currentUser.id);
     if (error) {
         toast({ 
             title: 'Gagal Memperbarui Profil', 
@@ -518,7 +556,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     const updatedUser = { ...currentUser, hasSeenWelcome: true };
     setCurrentUser(updatedUser);
-    await supabase.from('users').update({ hasSeenWelcome: true }).eq('id', currentUser.id);
+    await supabase.from('users').update({ has_seen_welcome: true }).eq('id', currentUser.id);
   };
   
   const redeemReward = async (rewardId: string) => {
@@ -536,7 +574,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       };
       
       setCurrentUser(updatedUser);
-      const { error } = await supabase.from('users').update({ coins: updatedUser.coins, unlockedRewardIds: updatedUser.unlockedRewardIds }).eq('id', currentUser.id);
+      const { error } = await supabase.from('users').update({ coins: updatedUser.coins, unlocked_reward_ids: updatedUser.unlockedRewardIds }).eq('id', currentUser.id);
 
       if (error) {
         toast({ title: 'Gagal Menyimpan', variant: 'destructive' });
@@ -550,7 +588,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     const updatedUser = { ...currentUser, activeBorderId: borderId };
     setCurrentUser(updatedUser);
-    const { error } = await supabase.from('users').update({ activeBorderId: borderId }).eq('id', currentUser.id);
+    const { error } = await supabase.from('users').update({ active_border_id: borderId }).eq('id', currentUser.id);
      if (error) {
         toast({ title: 'Gagal Mengatur Bingkai', variant: 'destructive' });
         setCurrentUser(currentUser);
@@ -561,7 +599,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     
     const newPostData = {
-        authorId: currentUser.id,
+        author_id: currentUser.id,
         title,
         content,
     };
@@ -578,8 +616,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         return;
     }
     
-    const postWithAuthor = { ...data, author: { name: currentUser.name, avatarUrl: currentUser.avatarUrl }, comments: [] };
-    setPosts(prevPosts => [postWithAuthor, ...prevPosts] as any);
+    const postWithAuthor: ForumPost = { 
+        id: data.id,
+        authorId: data.author_id,
+        title: data.title,
+        content: data.content,
+        timestamp: data.timestamp,
+        author: { name: currentUser.name, avatarUrl: currentUser.avatarUrl }, 
+        comments: [] 
+    };
+    setPosts(prevPosts => [postWithAuthor, ...prevPosts]);
     toast({ title: 'Postingan Dibuat!', variant: 'success' });
   };
   
@@ -587,8 +633,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
 
     const newCommentData = {
-        authorId: currentUser.id,
-        postId,
+        author_id: currentUser.id,
+        post_id: postId,
         content,
     };
 
@@ -604,14 +650,21 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         return;
     }
 
-    const commentWithAuthor = { ...data, author: { name: currentUser.name, avatarUrl: currentUser.avatarUrl } };
+    const commentWithAuthor: ForumComment = {
+        id: data.id,
+        authorId: data.author_id,
+        postId: data.post_id,
+        content: data.content,
+        timestamp: data.timestamp,
+        author: { name: currentUser.name, avatarUrl: currentUser.avatarUrl },
+    };
 
     setPosts(prevPosts =>
         prevPosts.map(post =>
             post.id === postId
                 ? { ...post, comments: [...post.comments, commentWithAuthor] }
                 : post
-        ) as any
+        )
     );
   };
   
