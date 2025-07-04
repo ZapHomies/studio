@@ -349,12 +349,18 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
       if (insertError) {
           console.error("Gagal membuat profil lengkap:", insertError);
-          throw new Error(`Gagal membuat profil pengguna: ${insertError.message}`);
+          toast({
+            title: 'Gagal Menyimpan Profil',
+            description: `Akun Anda berhasil dibuat, tetapi gagal menyimpan detail profil ke database. Error: ${insertError.message}. Ini kemungkinan besar disebabkan oleh masalah izin database (Row Level Security).`,
+            variant: 'destructive',
+            duration: 15000,
+          });
+          return;
       }
       
       toast({ 
           title: `Selamat Datang, ${name}!`, 
-          description: 'Akun Anda telah dibuat. Silakan periksa email Anda untuk konfirmasi (jika diperlukan) sebelum login.',
+          description: 'Akun Anda telah berhasil dibuat. Anda akan diarahkan sebentar lagi.',
           variant: 'success'
       });
 
@@ -409,8 +415,15 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         title: getTitleForLevel(newLevel),
         xp_to_next_level: getTotalXpForLevel(newLevel + 1),
         completed_missions: [...currentUser.completed_missions, missionId],
-        missions: currentUser.missions.filter(m => m.id !== missionId),
+        missions: currentUser.missions.filter(m => m.category === 'Harian' ? m.id !== missionId : true),
     };
+    
+    // For non-daily missions, we keep them in the list but mark as complete client-side
+    // This logic is handled by checking currentUser.completed_missions in the component.
+    if (mission.category !== 'Harian') {
+       updatedUser.missions = currentUser.missions;
+    }
+
 
     setCurrentUser(updatedUser);
     setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? updatedUser : u));
@@ -566,7 +579,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         comments: [],
         author: { name: currentUser.name, avatar_url: currentUser.avatar_url }
     };
-    setPosts(prevPosts => [postWithAuthor, ...prevPosts]);
+    setPosts(prevPosts => [postWithAuthor, ...prevPosts].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
     toast({ title: 'Postingan Dibuat!', variant: 'success' });
   };
   
@@ -607,3 +620,5 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;
 };
+
+    
