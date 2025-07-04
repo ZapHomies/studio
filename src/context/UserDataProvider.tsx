@@ -274,7 +274,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
       }
 
-      // Langkah 1: Buat profil minimal untuk mendapatkan koneksi.
+      // Langkah 1: Buat profil minimal untuk membuat koneksi.
       const minimalProfileData = { id: authData.user.id, name, email };
       const { error: insertError } = await supabase
         .from('users')
@@ -285,8 +285,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         const errorMessage = insertError.message || "Gagal membuat profil. Pastikan tabel 'users' ada di database Supabase Anda dan kebijakan RLS (jika aktif) mengizinkan penyisipan oleh pengguna baru.";
         throw new Error(errorMessage);
       }
-
-      // Langkah 2: Buat data lengkap dan perbarui profil.
+      
+      // Langkah 2: Perbarui profil dengan semua data lengkap.
       const initialMissions = await generateNewUserMissions(1);
       const now = new Date();
       const fullProfileData = {
@@ -306,22 +306,32 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         missions: initialMissions,
       };
       
-      const { error: updateError } = await supabase
+      const { data: updatedUser, error: updateError } = await supabase
         .from('users')
         .update(fullProfileData)
-        .eq('id', authData.user.id);
+        .eq('id', authData.user.id)
+        .select()
+        .single();
       
       if (updateError) {
         // Ini tidak kritis, pengguna sudah dibuat. Kita bisa catat errornya.
         console.error("Gagal memperbarui profil dengan data lengkap:", updateError.message);
         toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda.', variant: 'default' });
       } else {
-        toast({ title: `Pendaftaran Berhasil, ${name}!`, description: 'Silakan periksa email Anda untuk tautan konfirmasi sebelum login.', variant: 'success' });
+        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Silakan periksa email Anda untuk verifikasi jika diperlukan.', variant: 'success' });
       }
 
     } catch (error: any) {
       console.error("Register failed:", error);
-      toast({ title: 'Pendaftaran Gagal', description: error.message, variant: 'destructive' });
+      if (error.message && error.message.toLowerCase().includes('user already registered')) {
+        toast({
+          title: 'Email Sudah Terdaftar',
+          description: 'Email ini sudah digunakan. Silakan coba login atau gunakan email lain.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Pendaftaran Gagal', description: error.message, variant: 'destructive' });
+      }
     } finally {
       setIsLoading(false);
     }
