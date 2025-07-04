@@ -262,50 +262,68 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   const register = async (name: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-      if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
+      if (authError) {
+        throw new Error(authError.message);
+      }
+      if (!authData.user) {
+        throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
+      }
 
-      // --- Perbaikan: Buat profil lengkap dalam satu langkah ---
+      // Langkah 1: Buat profil minimal untuk mendapatkan koneksi.
+      const minimalProfileData = { id: authData.user.id, name, email };
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert(minimalProfileData);
+
+      if (insertError) {
+        console.error("Supabase insert error object:", insertError);
+        const errorMessage = insertError.message || "Gagal membuat profil. Pastikan tabel 'users' ada di database Supabase Anda dan kebijakan RLS (jika aktif) mengizinkan penyisipan oleh pengguna baru.";
+        throw new Error(errorMessage);
+      }
+
+      // Langkah 2: Buat data lengkap dan perbarui profil.
       const initialMissions = await generateNewUserMissions(1);
       const now = new Date();
-      
       const fullProfileData = {
-          id: authData.user.id,
-          name: name,
-          email: authData.user.email!,
-          avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
-          level: 1,
-          xp: 0,
-          xpToNextLevel: getTotalXpForLevel(2),
-          coins: 100,
-          title: getTitleForLevel(1),
-          completedMissions: [],
-          lastDailyReset: now.toISOString(),
-          lastWeeklyReset: now.toISOString(),
-          lastMonthlyReset: now.toISOString(),
-          hasSeenWelcome: false,
-          unlockedRewardIds: ['border-welcome'],
-          activeBorderId: 'border-welcome',
-          missions: initialMissions,
+        avatarUrl: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
+        level: 1,
+        xp: 0,
+        xpToNextLevel: getTotalXpForLevel(2),
+        coins: 100,
+        title: getTitleForLevel(1),
+        completedMissions: [],
+        lastDailyReset: now.toISOString(),
+        lastWeeklyReset: now.toISOString(),
+        lastMonthlyReset: now.toISOString(),
+        hasSeenWelcome: false,
+        unlockedRewardIds: ['border-welcome'],
+        activeBorderId: 'border-welcome',
+        missions: initialMissions,
       };
-
-      const { error: insertError } = await supabase.from('users').insert(fullProfileData);
       
-      if (insertError) {
-        console.error("Supabase insert error object:", JSON.stringify(insertError, null, 2));
-        const detailedMessage = `Gagal menyimpan profil ke database. Ini kemungkinan besar disebabkan karena tabel 'users' belum dibuat dengan benar di database Anda. Harap jalankan kembali skrip SQL yang diberikan. Pesan dari Supabase: ${insertError.message || 'Tidak ada pesan spesifik.'}`;
-        throw new Error(detailedMessage);
+      const { error: updateError } = await supabase
+        .from('users')
+        .update(fullProfileData)
+        .eq('id', authData.user.id);
+      
+      if (updateError) {
+        // Ini tidak kritis, pengguna sudah dibuat. Kita bisa catat errornya.
+        console.error("Gagal memperbarui profil dengan data lengkap:", updateError.message);
+        toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda.', variant: 'default' });
+      } else {
+        toast({ title: `Pendaftaran Berhasil, ${name}!`, description: 'Silakan periksa email Anda untuk tautan konfirmasi sebelum login.', variant: 'success' });
       }
-      
-      toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
-    
+
     } catch (error: any) {
-        console.error("Register failed:", error);
-        toast({ title: 'Pendaftaran Gagal', description: error.message, variant: 'destructive' });
+      console.error("Register failed:", error);
+      toast({ title: 'Pendaftaran Gagal', description: error.message, variant: 'destructive' });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
