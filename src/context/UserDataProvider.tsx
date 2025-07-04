@@ -10,6 +10,59 @@ import { generateMissions } from '@/ai/flows/generate-missions';
 
 // --- HELPER FUNCTIONS ---
 
+// Converts a Supabase DB user object (snake_case) to an application User object (camelCase)
+const fromSupabaseUser = (dbUser: any): User | null => {
+    if (!dbUser) return null;
+    const user = {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        avatarUrl: dbUser.avatar_url,
+        level: dbUser.level,
+        xp: dbUser.xp,
+        xpToNextLevel: dbUser.xp_to_next_level,
+        coins: dbUser.coins,
+        completedMissions: dbUser.completed_missions,
+        missions: dbUser.missions,
+        title: dbUser.title,
+        lastDailyReset: dbUser.last_daily_reset,
+        lastWeeklyReset: dbUser.last_weekly_reset,
+        lastMonthlyReset: dbUser.last_monthly_reset,
+        hasSeenWelcome: dbUser.has_seen_welcome,
+        unlockedRewardIds: dbUser.unlocked_reward_ids,
+        activeBorderId: dbUser.active_border_id,
+    };
+
+    // Ensure arrays are not null, which can happen with new or partially created users
+    user.completedMissions = user.completedMissions || [];
+    user.missions = user.missions || [];
+    user.unlockedRewardIds = user.unlockedRewardIds || [];
+    
+    return user;
+};
+
+// Converts a partial application User object (camelCase) to a Supabase DB object (snake_case)
+const toSupabaseUser = (appUser: Partial<User>): any => {
+    const dbUser: any = {};
+    if (appUser.name !== undefined) dbUser.name = appUser.name;
+    if (appUser.avatarUrl !== undefined) dbUser.avatar_url = appUser.avatarUrl;
+    if (appUser.level !== undefined) dbUser.level = appUser.level;
+    if (appUser.xp !== undefined) dbUser.xp = appUser.xp;
+    if (appUser.xpToNextLevel !== undefined) dbUser.xp_to_next_level = appUser.xpToNextLevel;
+    if (appUser.coins !== undefined) dbUser.coins = appUser.coins;
+    if (appUser.completedMissions !== undefined) dbUser.completed_missions = appUser.completedMissions;
+    if (appUser.missions !== undefined) dbUser.missions = appUser.missions;
+    if (appUser.title !== undefined) dbUser.title = appUser.title;
+    if (appUser.lastDailyReset !== undefined) dbUser.last_daily_reset = appUser.lastDailyReset;
+    if (appUser.lastWeeklyReset !== undefined) dbUser.last_weekly_reset = appUser.lastWeeklyReset;
+    if (appUser.lastMonthlyReset !== undefined) dbUser.last_monthly_reset = appUser.lastMonthlyReset;
+    if (appUser.hasSeenWelcome !== undefined) dbUser.has_seen_welcome = appUser.hasSeenWelcome;
+    if (appUser.unlockedRewardIds !== undefined) dbUser.unlocked_reward_ids = appUser.unlockedRewardIds;
+    if (appUser.activeBorderId !== undefined) dbUser.active_border_id = appUser.activeBorderId;
+    return dbUser;
+};
+
+
 const getTotalXpForLevel = (level: number): number => {
     if (level <= 1) return 0;
     let totalXp = 0;
@@ -44,52 +97,6 @@ const getTitleForLevel = (level: number): string => {
   return 'Muslim Baru';
 };
 
-// Converts a Supabase DB user object (snake_case) to an application User object (camelCase)
-const fromSupabaseUser = (dbUser: any): User => {
-    if (!dbUser) return dbUser;
-    return {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        avatarUrl: dbUser.avatar_url,
-        level: dbUser.level,
-        xp: dbUser.xp,
-        xpToNextLevel: dbUser.xp_to_next_level,
-        coins: dbUser.coins,
-        completedMissions: dbUser.completed_missions || [],
-        missions: dbUser.missions || [],
-        title: dbUser.title,
-        lastDailyReset: dbUser.last_daily_reset,
-        lastWeeklyReset: dbUser.last_weekly_reset,
-        lastMonthlyReset: dbUser.last_monthly_reset,
-        hasSeenWelcome: dbUser.has_seen_welcome,
-        unlockedRewardIds: dbUser.unlocked_reward_ids || [],
-        activeBorderId: dbUser.active_border_id,
-    };
-};
-
-// Converts a partial application User object (camelCase) to a Supabase DB object (snake_case)
-const toSupabaseUser = (appUser: Partial<User>): any => {
-    const dbUser: any = {};
-    if (appUser.id !== undefined) dbUser.id = appUser.id;
-    if (appUser.name !== undefined) dbUser.name = appUser.name;
-    if (appUser.email !== undefined) dbUser.email = appUser.email;
-    if (appUser.avatarUrl !== undefined) dbUser.avatar_url = appUser.avatarUrl;
-    if (appUser.level !== undefined) dbUser.level = appUser.level;
-    if (appUser.xp !== undefined) dbUser.xp = appUser.xp;
-    if (appUser.xpToNextLevel !== undefined) dbUser.xp_to_next_level = appUser.xpToNextLevel;
-    if (appUser.coins !== undefined) dbUser.coins = appUser.coins;
-    if (appUser.completedMissions !== undefined) dbUser.completed_missions = appUser.completedMissions;
-    if (appUser.missions !== undefined) dbUser.missions = appUser.missions;
-    if (appUser.title !== undefined) dbUser.title = appUser.title;
-    if (appUser.lastDailyReset !== undefined) dbUser.last_daily_reset = appUser.lastDailyReset;
-    if (appUser.lastWeeklyReset !== undefined) dbUser.last_weekly_reset = appUser.lastWeeklyReset;
-    if (appUser.lastMonthlyReset !== undefined) dbUser.last_monthly_reset = appUser.lastMonthlyReset;
-    if (appUser.hasSeenWelcome !== undefined) dbUser.has_seen_welcome = appUser.hasSeenWelcome;
-    if (appUser.unlockedRewardIds !== undefined) dbUser.unlocked_reward_ids = appUser.unlockedRewardIds;
-    if (appUser.activeBorderId !== undefined) dbUser.active_border_id = appUser.activeBorderId;
-    return dbUser;
-};
 
 // --- CONTEXT DEFINITION ---
 
@@ -219,11 +226,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const authorData = fromSupabaseUser(post.author);
       return {
         id: post.id,
-        authorId: authorData.id,
+        authorId: authorData!.id,
         title: post.title,
         content: post.content,
         timestamp: post.timestamp,
-        author: { name: authorData.name, avatarUrl: authorData.avatarUrl },
+        author: { name: authorData!.name, avatarUrl: authorData!.avatarUrl },
         comments: postComments,
       };
     });
@@ -241,7 +248,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error fetching all users:', error);
         setAllUsers([]);
     } else {
-        const appUsers = (data || []).map(fromSupabaseUser);
+        const appUsers = (data || []).map(dbUser => fromSupabaseUser(dbUser) as User).filter(Boolean);
         setAllUsers(appUsers);
     }
   }, []);
@@ -313,6 +320,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       
       const appUser = fromSupabaseUser(userProfile);
       
+      if (!appUser) {
+        setIsLoading(false);
+        return;
+      }
+
       const { updatedUser, needsDbUpdate } = await processUserSession(appUser);
       
       if (needsDbUpdate) {
@@ -376,6 +388,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
       }
 
+      // Step 1: Insert minimal profile to establish the link
       const minimalProfileData = { id: authData.user.id, name, email };
       const { error: insertError } = await supabase
         .from('users')
@@ -383,10 +396,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
       if (insertError) {
         console.error("Supabase insert error object:", JSON.stringify(insertError, null, 2));
-        const errorMessage = insertError.message || "Gagal membuat profil. Pastikan tabel 'users' ada dan kebijakan RLS mengizinkan penyisipan.";
-        throw new Error(errorMessage);
+        throw new Error(insertError.message);
       }
       
+      // Step 2: Update the profile with full details
       const initialMissions = await generateNewUserMissions(1);
       const now = new Date();
       const fullProfileData = {
@@ -461,50 +474,47 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const newLevel = getLevelForXp(newXp);
     const leveledUp = newLevel > oldLevel;
 
-    const updatedCompletedMissions = [...currentUser.completedMissions, missionId];
-    const newMissionsList = currentUser.missions.filter(m => m.id !== missionId);
-    
-    const optimisticUserUpdate: User = {
+    const updatedUser: User = {
         ...currentUser,
         xp: newXp,
         coins: newCoins,
         level: newLevel,
         title: getTitleForLevel(newLevel),
         xpToNextLevel: getTotalXpForLevel(newLevel + 1),
-        completedMissions: updatedCompletedMissions,
-        missions: newMissionsList,
+        completedMissions: [...currentUser.completedMissions, missionId],
+        missions: currentUser.missions.filter(m => m.id !== missionId),
     };
 
-    setCurrentUser(optimisticUserUpdate);
-    setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? optimisticUserUpdate : u));
+    setCurrentUser(updatedUser);
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? updatedUser : u));
     
     (async () => {
-        let finalMissionsList = newMissionsList;
+        let finalMissionsList = updatedUser.missions;
         if (mission.category === 'Harian') {
             try {
                 const { missions: newMissions } = await generateMissions({
                     level: newLevel,
-                    existingMissionIds: newMissionsList.map(m => m.id),
+                    existingMissionIds: finalMissionsList.map(m => m.id),
                     count: 1,
                     category: 'Harian'
                 });
                 if (newMissions && newMissions.length > 0) {
-                    finalMissionsList = [...newMissionsList, ...newMissions];
+                    finalMissionsList = [...finalMissionsList, ...newMissions];
                 }
             } catch (error) {
                 console.error("Gagal membuat misi pengganti:", error);
             }
         }
 
-        const dbUpdatePayload = {
+        const dbUpdatePayload = toSupabaseUser({
             xp: newXp,
             coins: newCoins,
             level: newLevel,
             title: getTitleForLevel(newLevel),
-            xp_to_next_level: getTotalXpForLevel(newLevel + 1),
-            completed_missions: updatedCompletedMissions,
+            xpToNextLevel: getTotalXpForLevel(newLevel + 1),
+            completedMissions: updatedUser.completedMissions,
             missions: finalMissionsList,
-        };
+        });
         
         setCurrentUser(prev => prev ? { ...prev, missions: finalMissionsList } : null);
 
@@ -537,13 +547,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     const { error } = await supabase.from('users').update(dbUpdateData).eq('id', currentUser.id);
     if (error) {
-        const errorDetails = JSON.stringify(error, null, 2);
-        console.error("Error updating profile:", errorDetails);
         toast({ 
             title: 'Gagal Memperbarui Profil', 
             variant: 'destructive',
-            description: `Terjadi kesalahan: ${error.message || 'Tidak ada pesan error'}. Ini mungkin karena masalah izin database (RLS).`
+            description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).`
         });
+        console.error("Error updating profile:", error);
+        // Revert optimistic update
         setCurrentUser(originalUser);
         setAllUsers(prevUsers => prevUsers.map(u => u.id === originalUser.id ? originalUser : u));
     } else {
@@ -577,10 +587,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       
       setCurrentUser(updatedUser);
 
-      const dbUpdatePayload = {
+      const dbUpdatePayload = toSupabaseUser({
           coins: updatedUser.coins,
-          unlocked_reward_ids: updatedUser.unlockedRewardIds,
-      };
+          unlockedRewardIds: updatedUser.unlockedRewardIds,
+      });
 
       const { error } = await supabase.from('users').update(dbUpdatePayload).eq('id', currentUser.id);
 
@@ -618,12 +628,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase.from('posts').insert(newPostData).select().single();
 
     if (error) {
-        console.error("Error creating post:", JSON.stringify(error, null, 2));
         toast({ 
             title: 'Gagal Membuat Postingan', 
             variant: 'destructive', 
             description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (RLS).` 
         });
+        console.error("Error creating post:", error);
         return;
     }
     
@@ -652,12 +662,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase.from('comments').insert(newCommentData).select().single();
 
     if (error) {
-        console.error("Error adding comment:", JSON.stringify(error, null, 2));
         toast({ 
             title: 'Gagal Menambah Komentar', 
             variant: 'destructive',
             description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (RLS).`
         });
+        console.error("Error adding comment:", error);
         return;
     }
 
@@ -672,10 +682,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setPosts(prevPosts =>
         prevPosts.map(post => {
             if (post.id === postId) {
-                // To display the new comment immediately, find the author details from allUsers
-                const author = allUsers.find(u => u.id === newComment.authorId);
-                const commentWithAuthor = { ...newComment, author: author ? { name: author.name, avatarUrl: author.avatarUrl } : undefined };
-                return { ...post, comments: [...post.comments, commentWithAuthor] };
+                return { ...post, comments: [...post.comments, newComment] };
             }
             return post;
         })
