@@ -319,7 +319,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
       }
 
-      // Langkah 1: Buat profil minimal untuk membuat koneksi.
       const minimalProfileData = { id: authData.user.id, name, email };
       const { error: insertError } = await supabase
         .from('users')
@@ -331,7 +330,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(errorMessage);
       }
       
-      // Langkah 2: Perbarui profil dengan semua data lengkap.
       const initialMissions = await generateNewUserMissions(1);
       const now = new Date();
       const fullProfileData = {
@@ -357,11 +355,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', authData.user.id);
       
       if (updateError) {
-        // Ini tidak kritis, pengguna sudah dibuat. Kita bisa catat errornya.
         console.error("Gagal memperbarui profil dengan data lengkap:", updateError.message);
         toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda.', variant: 'default' });
       } else {
-        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Silakan periksa email Anda untuk verifikasi jika diperlukan.', variant: 'success' });
+        toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Periksa email Anda untuk verifikasi jika diperlukan.', variant: 'success' });
       }
 
     } catch (error: any) {
@@ -405,7 +402,6 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const mission = currentUser.missions.find((m) => m.id === missionId);
     if (!mission || currentUser.completedMissions.includes(missionId)) return;
 
-    // --- Instantly update UI for responsiveness ---
     const xpFromMission = overrideXp !== undefined ? overrideXp : mission.xp;
     const coinsFromMission = mission.coins || 0;
     const totalXpGained = xpFromMission + bonusXp;
@@ -416,11 +412,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const newLevel = getLevelForXp(newXp);
     const leveledUp = newLevel > oldLevel;
 
-    // Create a new array for completed missions and filter out the completed mission from the user's mission list.
     const updatedCompletedMissions = [...currentUser.completedMissions, missionId];
     const newMissionsList = currentUser.missions.filter(m => m.id !== missionId);
     
-    // Create an optimistic user object for immediate state update.
     const optimisticUserUpdate = {
         ...currentUser,
         xp: newXp,
@@ -432,15 +426,11 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         missions: newMissionsList,
     };
 
-    // Apply the optimistic update to the current user state.
     setCurrentUser(optimisticUserUpdate);
-    // Also update the user in the allUsers list for leaderboards etc.
     setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? optimisticUserUpdate : u));
     
-    // --- Asynchronously handle DB updates and new mission generation ---
     (async () => {
         let finalMissionsList = newMissionsList;
-        // If it's a daily mission, generate a replacement.
         if (mission.category === 'Harian') {
             try {
                 const { missions: newMissions } = await generateMissions({
@@ -454,11 +444,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
                 }
             } catch (error) {
                 console.error("Gagal membuat misi pengganti:", error);
-                // The mission is already removed from the UI, so we just log the error.
             }
         }
 
-        // Prepare the final payload for the database.
         const dbUpdatePayload = {
             xp: newXp,
             coins: newCoins,
@@ -469,16 +457,13 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
             missions: finalMissionsList,
         };
         
-        // Update the user state again with the potentially new mission list
         setCurrentUser(prev => prev ? { ...prev, ...dbUpdatePayload } : null);
 
-        // Update the database.
         const { error } = await supabase.from('users').update(dbUpdatePayload).eq('id', currentUser.id);
 
         if (error) {
             toast({ title: "Gagal Menyimpan Progres", description: "Progres Anda mungkin tidak tersimpan.", variant: 'destructive' });
             console.error(error);
-            // Consider reverting the state or notifying the user more strongly.
         }
     })();
 
@@ -494,15 +479,22 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUser = async (updatedData: Partial<Pick<User, 'name' | 'avatarUrl'>>) => {
     if (!currentUser) return;
-    const updatedUser = { ...currentUser, ...updatedData };
-    setCurrentUser(updatedUser);
-    setAllUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+    const originalUser = currentUser;
+    const optimisticUser = { ...currentUser, ...updatedData };
+    setCurrentUser(optimisticUser);
+    setAllUsers(prevUsers => prevUsers.map(u => u.id === optimisticUser.id ? optimisticUser : u));
 
     const { error } = await supabase.from('users').update(updatedData).eq('id', currentUser.id);
     if (error) {
-        toast({ title: 'Gagal Memperbarui Profil', variant: 'destructive' });
-        setCurrentUser(currentUser);
-        setAllUsers(prevUsers => prevUsers.map(u => u.id === currentUser.id ? currentUser : u));
+        toast({ 
+            title: 'Gagal Memperbarui Profil', 
+            variant: 'destructive',
+            description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).`
+        });
+        console.error("Error updating profile:", error);
+        // Revert optimistic update
+        setCurrentUser(originalUser);
+        setAllUsers(prevUsers => prevUsers.map(u => u.id === originalUser.id ? originalUser : u));
     } else {
         toast({ title: 'Profil Diperbarui!', variant: 'success' });
     }
@@ -563,8 +555,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase.from('posts').insert(newPostData).select().single();
 
     if (error) {
-        toast({ title: 'Gagal Membuat Postingan', variant: 'destructive' });
-        console.error(error);
+        toast({ 
+            title: 'Gagal Membuat Postingan', 
+            variant: 'destructive', 
+            description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).` 
+        });
+        console.error("Error creating post:", error);
         return;
     }
     
@@ -585,8 +581,12 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase.from('comments').insert(newCommentData).select().single();
 
     if (error) {
-        toast({ title: 'Gagal Menambah Komentar', variant: 'destructive' });
-        console.error(error);
+        toast({ 
+            title: 'Gagal Menambah Komentar', 
+            variant: 'destructive',
+            description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).`
+        });
+        console.error("Error adding comment:", error);
         return;
     }
 
