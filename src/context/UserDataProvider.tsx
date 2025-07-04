@@ -154,9 +154,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
   const processUserSession = useCallback(async (user: User): Promise<{ updatedUser: User, needsDbUpdate: boolean }> => {
     let userToUpdate = { ...user };
-    let missionsToUpdate = [...(user.missions || [])];
     let needsDbUpdate = false;
     const now = new Date();
+
+    // Sanitize nullable arrays to prevent downstream errors.
+    // This handles cases where old user data in the DB might have null for these fields.
+    if (!userToUpdate.missions) userToUpdate.missions = [];
+    if (!userToUpdate.completedMissions) userToUpdate.completedMissions = [];
+    if (!userToUpdate.unlockedRewardIds) userToUpdate.unlockedRewardIds = [];
+    
+    let missionsToUpdate = [...userToUpdate.missions];
 
     if (!isToday(new Date(userToUpdate.lastDailyReset))) {
         missionsToUpdate = missionsToUpdate.filter(m => m.category !== 'Harian');
