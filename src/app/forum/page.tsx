@@ -156,13 +156,13 @@ function PostCard({ post, author }: { post: ForumPost, author: User | undefined 
                 <AccordionTrigger className="p-4 hover:no-underline hover:bg-muted/50">
                     <div className="flex items-start gap-4 text-left w-full">
                         <Avatar className="h-10 w-10 border">
-                            <AvatarImage src={post.author?.avatar_url} alt={post.author?.name} />
-                            <AvatarFallback>{post.author?.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={author.avatar_url} alt={author.name} />
+                            <AvatarFallback>{author.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                             <h3 className="font-semibold text-base">{post.title}</h3>
                             <p className="text-sm text-muted-foreground">
-                                oleh {post.author?.name} • {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: id })} • {post.comments.length} komentar
+                                oleh {author.name} • {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: id })} • {post.comments.length} komentar
                             </p>
                         </div>
                     </div>
@@ -227,7 +227,14 @@ export default function ForumPage() {
     }, {} as Record<string, User>);
   }, [allUsers]);
 
-  const sortedPosts = [...posts].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const postsWithAuthors = useMemo(() => {
+    return posts.map(post => ({
+        ...post,
+        author: usersById[post.author_id],
+    }))
+  }, [posts, usersById]);
+
+  const sortedPosts = postsWithAuthors.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return (
     <div className="container mx-auto max-w-4xl space-y-8 px-4 py-8">
@@ -248,7 +255,7 @@ export default function ForumPage() {
       <main className="space-y-4">
         {sortedPosts.length > 0 ? (
             sortedPosts.map(post => (
-                <PostCard key={post.id} post={post} author={usersById[post.author_id]} />
+                <PostCard key={post.id} post={post} author={post.author} />
             ))
         ) : (
             <Card className="text-center p-10 border-dashed">

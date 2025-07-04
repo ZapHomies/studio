@@ -1,7 +1,7 @@
 'use client';
 
 export interface User {
-  id: string; // Will use Supabase Auth UUID
+  id: string;
   name: string;
   email: string;
   avatar_url: string;
@@ -10,15 +10,12 @@ export interface User {
   xp_to_next_level: number;
   coins: number;
   completed_missions: string[];
-  missions: Mission[]; // Missions are now stored per-user
+  missions: Mission[];
   title: string;
-  // Timestamps for reset logic
   last_daily_reset: string;
   last_weekly_reset: string;
   last_monthly_reset: string;
-  // Flag for onboarding
   has_seen_welcome: boolean;
-  // Rewards feature
   unlocked_reward_ids: string[];
   active_border_id: string | null;
 }
@@ -51,7 +48,6 @@ export interface ForumComment {
   post_id: string;
   content: string;
   timestamp: string;
-  // Joined data from users table
   author?: Pick<User, 'name' | 'avatar_url'>;
 }
 
@@ -62,6 +58,5 @@ export interface ForumPost {
   content: string;
   timestamp: string;
   comments: ForumComment[];
-  // Joined data from users table
   author?: Pick<User, 'name' | 'avatar_url'>;
 }

@@ -140,10 +140,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchForumData = useCallback(async () => {
-    // Step 1: Fetch all posts with their authors
+    // Step 1: Fetch all posts
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
-      .select('*, author:users(name, avatar_url)')
+      .select('*') // Simpler query
       .order('timestamp', { ascending: false });
 
     if (postsError) {
@@ -321,26 +321,15 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       if (!authData.user) {
         throw new Error('Pendaftaran berhasil tetapi tidak ada data pengguna yang dikembalikan.');
       }
-
-      // Step 1: Insert a minimal profile to establish the foreign key relationship.
-      const minimalProfileData = {
-        id: authData.user.id,
-        name,
-        email,
-        avatar_url: avatarPool[Math.floor(Math.random() * avatarPool.length)].url, // Provide a default avatar
-      };
-
-      const { error: insertError } = await supabase.from('users').insert(minimalProfileData);
-      if (insertError) {
-          console.error("Gagal menyisipkan profil minimal:", insertError.message);
-          throw new Error(`Gagal membuat profil dasar: ${insertError.message}`);
-      }
       
-      // Step 2: Generate missions and update the profile with all details.
       const initialMissions = await generateNewUserMissions(1);
       const now = new Date();
 
-      const fullProfileData = {
+      const newUserPayload = {
+        id: authData.user.id,
+        name,
+        email,
+        avatar_url: avatarPool[Math.floor(Math.random() * avatarPool.length)].url,
         level: 1,
         xp: 0,
         xp_to_next_level: getTotalXpForLevel(2),
@@ -356,13 +345,18 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         active_border_id: 'border-welcome',
       };
 
-      const { error: updateError } = await supabase.from('users').update(fullProfileData).eq('id', authData.user.id);
-      if (updateError) {
-          console.error("Gagal memperbarui profil dengan data lengkap:", updateError.message);
-          toast({ title: 'Pendaftaran Berhasil', description: 'Namun, terjadi sedikit masalah saat menyiapkan profil lengkap Anda.', variant: 'default' });
-      } else {
-          toast({ title: `Selamat Bergabung, ${name}!`, description: 'Akun Anda berhasil dibuat. Hadiah gratis telah ditambahkan!', variant: 'success' });
+      const { error: insertError } = await supabase.from('users').insert(newUserPayload);
+
+      if (insertError) {
+          console.error("Gagal membuat profil lengkap:", insertError);
+          throw new Error(`Gagal membuat profil pengguna: ${insertError.message}`);
       }
+      
+      toast({ 
+          title: `Selamat Datang, ${name}!`, 
+          description: 'Akun Anda telah dibuat. Silakan periksa email Anda untuk konfirmasi (jika diperlukan) sebelum login.',
+          variant: 'success'
+      });
 
     } catch (error: any) {
       console.error("Register failed:", error);
@@ -483,9 +477,9 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         toast({ 
             title: 'Gagal Memperbarui Profil', 
             variant: 'destructive',
-            description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).`
+            description: `Terjadi kesalahan: ${error.message}. Periksa kebijakan RLS Anda.`
         });
-        console.error("Error updating profile:", error);
+        console.error("Error updating profile:", error, "Payload:", updatedData);
         // Revert optimistic update
         setCurrentUser(originalUser);
         setAllUsers(prevUsers => prevUsers.map(u => u.id === originalUser.id ? originalUser : u));
@@ -556,15 +550,19 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         content,
     };
     
-    const { data, error } = await supabase.from('posts').insert(newPostData).select('*, author:users(name, avatar_url)').single();
+    const { data, error } = await supabase.from('posts').insert(newPostData).select().single();
 
     if (error) {
         console.error("Error creating post:", error, "Payload:", newPostData);
-        toast({ title: 'Gagal Membuat Postingan', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}.` });
+        toast({ title: 'Gagal Membuat Postingan', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}. Periksa kebijakan RLS Anda.` });
         return;
     }
     
-    const postWithAuthor: ForumPost = { ...(data as ForumPost), comments: [] };
+    const postWithAuthor: ForumPost = { 
+        ...(data as ForumPost), 
+        comments: [],
+        author: { name: currentUser.name, avatar_url: currentUser.avatar_url }
+    };
     setPosts(prevPosts => [postWithAuthor, ...prevPosts]);
     toast({ title: 'Postingan Dibuat!', variant: 'success' });
   };
@@ -582,7 +580,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
 
     if (error) {
         console.error("Error adding comment:", error, "Payload:", newCommentData);
-        toast({ title: 'Gagal Menambah Komentar', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}.`});
+        toast({ title: 'Gagal Menambah Komentar', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}. Periksa kebijakan RLS Anda.`});
         return;
     }
 

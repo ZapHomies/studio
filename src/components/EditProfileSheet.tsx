@@ -32,12 +32,12 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
   const { toast } = useToast();
   
   const [name, setName] = useState(currentUser?.name || '');
-  const [selected_avatar_url, setSelectedAvatarUrl] = useState(currentUser?.avatar_url || '');
-  const [selected_border_id, setSelectedBorderId] = useState(currentUser?.active_border_id || null);
+  const [selectedAvatarUrl, setSelectedAvatarUrl] = useState(currentUser?.avatar_url || '');
+  const [selectedBorderId, setSelectedBorderId] = useState(currentUser?.active_border_id || null);
   
   const [generationPrompt, setGenerationPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generated_avatar_url, setGeneratedAvatarUrl] = useState<string | null>(null);
+  const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
 
   const unlockedBorders = allRewards.filter(r => r.type === 'border' && currentUser?.unlocked_reward_ids.includes(r.id));
 
@@ -53,9 +53,9 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
 
   const handleSave = () => {
     if (!currentUser) return;
-    updateUser({ name, avatar_url: selected_avatar_url });
-    if (selected_border_id !== currentUser.active_border_id) {
-      setActiveBorder(selected_border_id);
+    updateUser({ name, avatar_url: selectedAvatarUrl });
+    if (selectedBorderId !== currentUser.active_border_id) {
+      setActiveBorder(selectedBorderId);
     }
     onOpenChange(false);
   };
@@ -135,12 +135,12 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
               >
                   <div className={cn(
                       'flex h-full w-full items-center justify-center rounded-full border-4 bg-muted text-muted-foreground',
-                      selected_border_id === null ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                      selectedBorderId === null ? 'border-primary' : 'border-transparent hover:border-primary/50'
                   )}>
                     <Gem className="h-8 w-8 opacity-50"/>
                   </div>
                   <p className="mt-1 text-center text-xs font-medium">Tanpa Bingkai</p>
-                  {selected_border_id === null && (
+                  {selectedBorderId === null && (
                     <div className="absolute bottom-6 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background">
                       <CheckCircle className="h-5 w-5" />
                     </div>
@@ -157,7 +157,7 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
                     {border.style === 'gradient' ? (
                         <div className={cn(
                             'h-full w-full rounded-full p-1',
-                            selected_border_id === border.id ? 'bg-primary' : border.value
+                            selectedBorderId === border.id ? 'bg-primary' : border.value
                         )}>
                             <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
                                 <Gem className="h-8 w-8 opacity-50" />
@@ -166,13 +166,13 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
                     ) : (
                          <div className={cn(
                             'flex h-full w-full items-center justify-center rounded-full border-4 bg-muted',
-                            selected_border_id === border.id ? 'border-primary' : border.value
+                            selectedBorderId === border.id ? 'border-primary' : border.value
                         )}>
                            <Gem className={cn("h-8 w-8", (border.value || '').replace('border-','text-'))} />
                         </div>
                     )}
                    <p className="mt-1 text-center text-xs font-medium">{border.name}</p>
-                   {selected_border_id === border.id && (
+                   {selectedBorderId === border.id && (
                     <div className="absolute bottom-6 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background">
                       <CheckCircle className="h-5 w-5" />
                     </div>
@@ -186,26 +186,26 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
           <div className="space-y-3">
             <Label>Pilih Avatar</Label>
             <div className="grid grid-cols-3 gap-4 pt-2">
-              {generated_avatar_url && (
+              {generatedAvatarUrl && (
                 <div
                   className="relative cursor-pointer aspect-square"
-                  onClick={() => setSelectedAvatarUrl(generated_avatar_url)}
+                  onClick={() => setSelectedAvatarUrl(generatedAvatarUrl)}
                 >
                   <Image
-                    src={generated_avatar_url}
+                    src={generatedAvatarUrl}
                     alt="Avatar buatan AI"
                     data-ai-hint="generated avatar"
                     width={100}
                     height={100}
                     className={cn(
                       'rounded-full border-4 transition-all w-full h-full object-cover',
-                      selected_avatar_url === generated_avatar_url ? 'border-primary' : 'border-amber-400 hover:border-primary/50'
+                      selectedAvatarUrl === generatedAvatarUrl ? 'border-primary' : 'border-amber-400 hover:border-primary/50'
                     )}
                   />
                    <div className="absolute top-0 -left-1 flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-white border-2 border-background">
                       <Sparkles className="h-4 w-4" />
                     </div>
-                  {selected_avatar_url === generated_avatar_url && (
+                  {selectedAvatarUrl === generatedAvatarUrl && (
                     <div className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background">
                       <CheckCircle className="h-5 w-5" />
                     </div>
@@ -227,10 +227,10 @@ export default function EditProfileSheet({ isOpen, onOpenChange }: EditProfileSh
                     height={100}
                     className={cn(
                       'rounded-full border-4 transition-all w-full h-full object-cover',
-                      selected_avatar_url === avatar.url ? 'border-primary' : 'border-transparent hover:border-primary/50'
+                      selectedAvatarUrl === avatar.url ? 'border-primary' : 'border-transparent hover:border-primary/50'
                     )}
                   />
-                  {selected_avatar_url === avatar.url && (
+                  {selectedAvatarUrl === avatar.url && (
                     <div className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground border-2 border-background">
                       <CheckCircle className="h-5 w-5" />
                     </div>
