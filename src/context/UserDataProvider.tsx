@@ -331,7 +331,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [router, fetchForumData, fetchAllUsers, processUserSession, pathname]);
+  }, [router, fetchForumData, fetchAllUsers, processUserSession, pathname, toast]);
   
   useEffect(() => {
     if (!isLoading) {
@@ -351,7 +351,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         password,
         options: {
           data: {
-            name: name, // Store the name in metadata as a fallback
+            name: name, // Store the name in metadata for self-healing
           },
         },
       });
@@ -410,13 +410,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const logout = async () => {
-    setIsLoading(true);
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    setPosts([]);
-    setAllUsers([]);
-    router.push('/');
-    setIsLoading(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Logout Gagal",
+        description: "Gagal keluar dari sesi. Silakan coba lagi.",
+        variant: "destructive"
+      });
+    }
+    // The onAuthStateChange listener will handle state clearing and redirection.
   };
 
   const completeMission = async (missionId: string, bonus_xp = 0, overrideXp?: number) => {
@@ -486,7 +489,7 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         const { error } = await supabase.from('users').update(dbUpdatePayload).eq('id', currentUser.id);
 
         if (error) {
-            toast({ title: "Gagal Menyimpan Progres", description: "Progres Anda mungkin tidak tersimpan.", variant: 'destructive' });
+            toast({ title: "Gagal Menyimpan Progres", description: `Terjadi kesalahan: ${error.message}`, variant: 'destructive' });
             console.error(error);
         }
     })();
@@ -515,9 +518,10 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         toast({ 
             title: 'Gagal Memperbarui Profil', 
             variant: 'destructive',
-            description: `Terjadi kesalahan: ${error.message}. Ini mungkin karena masalah izin database (Row Level Security).`
+            description: `Terjadi kesalahan: ${error.message}.`
         });
-        console.error("Error updating profile:", error);
+        console.error("Error updating profile:", error.message, error);
+        // Revert optimistic update
         setCurrentUser(originalUser);
         setAllUsers(prevUsers => prevUsers.map(u => u.id === originalUser.id ? originalUser : u));
     } else {
@@ -557,8 +561,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.from('users').update(dbUpdatePayload).eq('id', currentUser.id);
 
       if (error) {
-        console.error("Error redeeming reward:", error);
-        toast({ title: 'Gagal Menyimpan', variant: 'destructive' });
+        console.error("Error redeeming reward:", error.message, error);
+        toast({ title: 'Gagal Menyimpan', description: `Terjadi kesalahan: ${error.message}`, variant: 'destructive' });
         setCurrentUser(currentUser);
       } else {
         toast({ title: 'Hadiah Berhasil Ditukar!', description: `Anda membuka "${reward.name}".`, variant: 'success' });
@@ -572,8 +576,8 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
     setCurrentUser(updatedUser);
     const { error } = await supabase.from('users').update({ active_border_id: borderId }).eq('id', currentUser.id);
      if (error) {
-        console.error("Error setting active border:", error);
-        toast({ title: 'Gagal Mengatur Bingkai', variant: 'destructive' });
+        console.error("Error setting active border:", error.message, error);
+        toast({ title: 'Gagal Mengatur Bingkai', description: `Terjadi kesalahan: ${error.message}`, variant: 'destructive' });
         setCurrentUser(originalUser);
      }
   };
@@ -587,19 +591,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         content,
     };
     
-    const { data, error } = await supabase.from('posts').insert(newPostData).select().single();
+    const { error } = await supabase.from('posts').insert(newPostData);
 
     if (error) {
-        console.error("Error creating post:", error, "Payload:", newPostData);
+        console.error("Error creating post:", error.message, error);
         toast({ title: 'Gagal Membuat Postingan', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}.` });
         return;
     }
     
-    const postWithAuthor: ForumPost = { 
-        ...(data as ForumPost), 
-        comments: [],
-    };
-    setPosts(prevPosts => [postWithAuthor, ...prevPosts].sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+    // Refetch forum data to show the new post
+    await fetchForumData();
     toast({ title: 'Postingan Dibuat!', variant: 'success' });
   };
   
@@ -612,24 +613,16 @@ export const UserDataProvider = ({ children }: { children: ReactNode }) => {
         content,
     };
 
-    const { data, error } = await supabase.from('comments').insert(newCommentData).select().single();
+    const { error } = await supabase.from('comments').insert(newCommentData);
 
     if (error) {
-        console.error("Error adding comment:", error, "Payload:", newCommentData);
+        console.error("Error adding comment:", error.message, error);
         toast({ title: 'Gagal Menambah Komentar', variant: 'destructive', description: `Terjadi kesalahan: ${error.message}.`});
         return;
     }
 
-    const newComment: ForumComment = data as ForumComment;
-
-    setPosts(prevPosts =>
-        prevPosts.map(post => {
-            if (post.id === postId) {
-                return { ...post, comments: [...post.comments, newComment] };
-            }
-            return post;
-        })
-    );
+    // Refetch forum data to show the new comment
+    await fetchForumData();
   };
   
   const value = { currentUser, missions, allUsers, posts, isAuthenticated, isLoading, completeMission, login, logout, register, updateUser, markWelcomeAsSeen, redeemReward, setActiveBorder, createPost, addComment };
